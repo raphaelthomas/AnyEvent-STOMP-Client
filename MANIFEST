@@ -1,0 +1,5 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+lib/AnyEvent/STOMP/Client.pm
