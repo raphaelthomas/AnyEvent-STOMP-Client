@@ -166,17 +166,19 @@ sub subscribe {
             undef
         );
     }
-
-    return $self->{subscriptions}{$destination};
 }
 
 sub unsubscribe {
     my $self = shift;
-    my $subscription_id = shift;
+    my $destination = shift;
+
+    unless (defined $destination and $self->{subscriptions}{$destination}) {
+        croak "You've never subscribed to '$destination', have you?";
+    }
 
     $self->send_frame(
         'UNSUBSCRIBE',
-        {id => $subscription_id,},
+        {id => $self->{subscriptions}{$destination}, receipt => 0},
         undef
     );
 }
