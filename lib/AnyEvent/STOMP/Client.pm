@@ -427,7 +427,7 @@ sub on_disconnected {
 sub on_message {
     my ($self, $cb, $destination) = @_;
 
-    unless ($self->is_destination_valid($destination)) {
+    unless (not defined $destination or $self->is_destination_valid($destination)) {
         croak "Would you mind supplying me with a valid destination?";
     }
 
