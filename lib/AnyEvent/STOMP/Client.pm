@@ -480,20 +480,25 @@ sub read_frame {
     );
 }
 
+sub unregister_callback {
+    my ($self, $guard) = @_;
+    $self->unreg_cb($guard);
+}
+
 sub on_send_frame {
-    shift->reg_cb('SEND_FRAME', shift);
+    return shift->reg_cb('SEND_FRAME', shift);
 }
 
 sub on_read_frame {
-    shift->reg_cb('READ_FRAME', shift);
+    return shift->reg_cb('READ_FRAME', shift);
 }
 
 sub on_connected {
-    shift->reg_cb('CONNECTED', shift);
+    return shift->reg_cb('CONNECTED', shift);
 }
 
 sub on_disconnected {
-    shift->reg_cb('DISCONNECTED', shift);
+    return shift->reg_cb('DISCONNECTED', shift);
 }
 
 sub on_message {
@@ -504,27 +509,27 @@ sub on_message {
     }
 
     if (defined $destination and defined $self->{subscriptions}{$destination}) {
-        $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
+        return $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
     }
     else {
-        $self->reg_cb('MESSAGE', $cb);
+        return $self->reg_cb('MESSAGE', $cb);
     }
 }
 
 sub on_receipt {
-    shift->reg_cb('RECEIPT', shift);
+    return shift->reg_cb('RECEIPT', shift);
 }
 
 sub on_error {
-    shift->reg_cb('ERROR', shift);
+    return shift->reg_cb('ERROR', shift);
 }
 
 sub on_subscribed {
-    shift->reg_cb('SUBSCRIBED', shift);
+    return shift->reg_cb('SUBSCRIBED', shift);
 }
 
 sub on_unsubscribed {
-    shift->reg_cb('UNSUBSCRIBED', shift);
+    return shift->reg_cb('UNSUBSCRIBED', shift);
 }
 
 1;
