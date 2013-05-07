@@ -6,6 +6,7 @@ use warnings;
 
 use parent 'Object::Event';
 
+use Carp;
 use AnyEvent;
 use AnyEvent::Handle;
 use List::Util 'max';
@@ -134,15 +135,21 @@ sub subscribe {
     my $self = shift;
     my $destination = shift;
     my $ack_mode = shift || 'auto';
+    my $additional_headers = shift || {};
 
     unless (defined $self->{subscriptions}{$destination}) {
         my $subscription_id = shift || int(rand(1000));
         $self->{subscriptions}{$destination} = $subscription_id;
         $self->send_frame(
             'SUBSCRIBE',
-            {destination => $destination, id => $subscription_id, ack => $ack_mode,},
+            {
+                destination => $destination,
+                id => $subscription_id,
+                ack => $ack_mode, 
+                %$additional_headers,
+            },
             undef
-            );
+        );
     }
 
     return $self->{subscriptions}{$destination};
@@ -210,6 +217,8 @@ sub decode_header {
 sub send_frame {
     my ($self, $command, $header_hashref, $body) = @_;
 
+    utf8::encode($command);
+
     my $header;
     if ($command eq 'CONNECT') {
         $header = header_hash2string($header_hashref);
@@ -217,6 +226,7 @@ sub send_frame {
     else {
         $header = header_hash2string(encode_header($header_hashref));
     }
+    utf8::encode($header);
 
     my $frame;
     if ($command eq 'SEND') {
@@ -255,10 +265,16 @@ sub send {
     my $self = shift;
     my ($destination, $headers, $body) = @_;
 
+    if ($destination =~ m/^\/(?:queue|topic)\/.+$/) {
+        $headers->{destination} = $destination;
+    }
+    else {
+        croak "Message destination not valid!";
+    }
+
     unless (defined $headers->{'content-length'}) {
         $headers->{'content-length'} = length $body || 0;
     }
-    $headers->{destination} = $destination;
 
     $self->send_frame('SEND', $headers, $body);
 }
@@ -295,6 +311,14 @@ sub receive_frame {
                             cb => sub {
                                 my ($handle, $body) = @_;
                                 $self->event($command, $header_hashref, $body);
+
+                                if (defined $header_hashref->{subscription}) {
+                                    $self->event(
+                                        $command.'-'.$header_hashref->{subscription},
+                                        $header_hashref,
+                                        $body
+                                    );
+                                }
                             }
                         );
                     }
@@ -329,7 +353,15 @@ sub on_disconnected {
 }
 
 sub on_message {
-    shift->reg_cb('MESSAGE', shift);
+    my $self = shift;
+    my ($cb, $destination) = @_;
+
+    if (defined $destination and defined $self->{subscriptions}{$destination}) {
+        $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
+    }
+    else {
+        $self->reg_cb('MESSAGE', $cb);
+    }
 }
 
 sub on_receipt {
