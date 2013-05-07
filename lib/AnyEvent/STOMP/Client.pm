@@ -394,6 +394,7 @@ sub read_frame {
                             %$args,
                             cb => sub {
                                 my ($handle, $body) = @_;
+                                $self->event('READ_FRAME', $command, $header_hashref, $body);
                                 $self->event($command, $header_hashref, $body);
 
                                 if (defined $header_hashref->{subscription}) {
@@ -416,6 +417,7 @@ sub read_frame {
                             $self->set_heartbeat_intervals($header_hashref->{'heart-beat'});
                         }
 
+                        $self->event('READ_FRAME', $command, $header_hashref);
                         $self->event($command, $header_hashref);
                     }
                 },
@@ -426,6 +428,10 @@ sub read_frame {
 
 sub on_send_frame {
     shift->reg_cb('SEND_FRAME', shift);
+}
+
+sub on_read_frame {
+    shift->reg_cb('READ_FRAME', shift);
 }
 
 sub on_connected {
