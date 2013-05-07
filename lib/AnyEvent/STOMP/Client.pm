@@ -311,17 +311,29 @@ sub send_frame {
 }
 
 sub ack {
-    my $self = shift;
-    my $msg_id = shift;
+    my ($self, $ack_id, $transaction) = @_;
 
-    $self->send_frame('ACK', {id => $msg_id,});
+    unless ($ack_id) {
+        croak "I do really need the message's ack header to ACK it.";
+    }
+    
+    my $header = {id => $ack_id,};
+    $header->{transaction} = $transaction if (defined $transaction);
+
+    $self->send_frame('ACK', $header);
 }
 
 sub nack {
-    my $self = shift;
-    my $msg_id = shift;
+    my ($self, $ack_id, $transaction) = @_;
 
-    $self->send_frame('NACK', {id => $msg_id,});
+    unless ($ack_id) {
+        croak "I do really need the message's ack header to NACK it.";
+    }
+    
+    my $header = {id => $ack_id,};
+    $header->{transaction} = $transaction if (defined $transaction);
+
+    $self->send_frame('NACK', $header);
 }
 
 sub send_heartbeat {
