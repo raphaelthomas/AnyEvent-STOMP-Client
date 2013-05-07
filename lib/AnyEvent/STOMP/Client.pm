@@ -52,6 +52,7 @@ sub connect {
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
         on_connect => sub {
+            $self->{connect_headers} = $connect_headers;
             $self->send_frame('CONNECT', $connect_headers);
         },
         on_connect_error => sub {
@@ -75,7 +76,9 @@ sub connect {
 }
 
 sub disconnect {
-    shift->send_frame('DISCONNECT', {receipt => int(rand(1000)),});
+    my $self = shift;
+    $self->{connected} = 0;
+    $self->send_frame('DISCONNECT', {receipt => int(rand(1000)),});
 }
 
 sub DESTROY {
