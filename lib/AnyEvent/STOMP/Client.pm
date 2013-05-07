@@ -77,8 +77,8 @@ sub connect {
 
 sub disconnect {
     my $self = shift;
-    $self->{connected} = 0;
     $self->send_frame('DISCONNECT', {receipt => int(rand(1000)),});
+    $self->{connected} = 0;
 }
 
 sub DESTROY {
