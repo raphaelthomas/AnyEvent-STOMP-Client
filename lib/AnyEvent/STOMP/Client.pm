@@ -286,6 +286,11 @@ sub decode_header {
 sub send_frame {
     my ($self, $command, $header_hashref, $body) = @_;
 
+    unless ($self->is_connected or $command eq 'CONNECT') {
+        croak "Have you considered connecting to a STOMP broker first before "
+            ."trying to send something?";
+    }
+
     utf8::encode($command);
 
     my $header;
