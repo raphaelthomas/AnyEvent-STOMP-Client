@@ -67,7 +67,7 @@ sub connect {
             $self->event('DISCONNECTED');
         },
         on_read => sub {
-            $self->receive_frame;
+            $self->read_frame;
         },
     );
 
@@ -147,6 +147,11 @@ sub subscribe {
     my $ack_mode = shift || 'auto';
     my $additional_headers = shift || {};
 
+    unless ($ack_mode =~ m/(?:auto|client|client-individual)/) {
+        croak "Invalid acknowledgement mode '$ack_mode'. "
+            ."Valid modes are 'auto', 'client' and 'client-individual'."
+    }
+
     unless (defined $self->{subscriptions}{$destination}) {
         my $subscription_id = shift || int(rand(1000));
         $self->{subscriptions}{$destination} = $subscription_id;
@@ -188,6 +193,7 @@ sub header_string2hash {
     foreach (split /\n/, $header_string) {
         if (m/([^\r\n:]+):([^\r\n:]*)/) {
             # add header decoding
+            # Repeated Header Entries: Do not replace if it already exists
             $result_hashref->{$1} = $2 unless defined $result_hashref->{$1};
         }
     }
@@ -286,10 +292,14 @@ sub send {
         $headers->{'content-length'} = length $body || 0;
     }
 
+    unless (defined $headers->{'content-type'}) {
+        carp "It is strongly recommended to set the 'content-type' header.";
+    }
+
     $self->send_frame('SEND', $headers, $body);
 }
 
-sub receive_frame {
+sub read_frame {
     my $self = shift;
     $self->{handle}->unshift_read(
         line => sub {
