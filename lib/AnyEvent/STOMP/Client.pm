@@ -157,26 +157,46 @@ sub subscribe {
 
     if (defined $self->{subscriptions}{$destination}) {
         carp "You already subscribed to '$destination'.";
+
+        if ($self->handles('SUBSCRIBED')) {
+            $self->event('SUBSCRIBED', $destination);
+        }
     }
     else {
         my $subscription_id = shift || int(rand(1000));
         $self->{subscriptions}{$destination} = $subscription_id;
-        $self->send_frame(
-            'SUBSCRIBE',
-            {
-                destination => $destination,
-                id => $subscription_id,
-                ack => $ack_mode, 
-                %$additional_headers,
-            },
-            undef
-        );
+
+        my $header = {
+            destination => $destination,
+            id => $subscription_id,
+            ack => $ack_mode, 
+            %$additional_headers,
+        };
+
+        if ($self->handles('SUBSCRIBED')) {
+            unless (defined $header->{receipt}) {
+                $header->{receipt} = int(rand(1000));
+            }
+
+            $self->on_receipt(
+                sub {
+                    my ($self, $receipt_header) = @_;
+                    if ($receipt_header->{'receipt-id'} == $header->{receipt}) {
+                        $self->event('SUBSCRIBED', $header->{destination});
+                        $self->unreg_me;
+                    }
+                }
+            );
+        }
+
+        $self->send_frame('SUBSCRIBE', $header);
     }
 }
 
 sub unsubscribe {
     my $self = shift;
     my $destination = shift;
+    my $additional_headers = shift || {};
 
     unless ($self->is_destination_valid($destination)) {
         croak "Would you mind supplying me with a valid destination?";
@@ -185,12 +205,26 @@ sub unsubscribe {
         croak "You've never subscribed to '$destination', have you?";
     }
 
-    $self->send_frame(
-        'UNSUBSCRIBE',
-        {id => $self->{subscriptions}{$destination}, receipt => 0},
-        undef
-    );
+    my $header = {
+        id => $self->{subscriptions}{$destination},
+        %$additional_headers,
+    };
 
+    if ($self->handles('UNSUBSCRIBED')) {
+        $header->{receipt} = int(rand(1000)) unless defined $header->{receipt};
+
+        $self->on_receipt(
+            sub {
+                my ($self, $receipt_header) = @_;
+                if ($receipt_header->{'receipt-id'} == $header->{receipt}) {
+                    $self->event('UNSUBSCRIBED', $destination);
+                    $self->unreg_me;
+                }
+            }
+        );
+    }
+
+    $self->send_frame('UNSUBSCRIBE', $header);
     $self->{subscriptions}{$destination} = undef;
 }
 
