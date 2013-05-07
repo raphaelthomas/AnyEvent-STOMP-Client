@@ -151,8 +151,14 @@ sub subscribe {
         croak "Invalid acknowledgement mode '$ack_mode'. "
             ."Valid modes are 'auto', 'client' and 'client-individual'."
     }
+    unless ($self->is_destination_valid($destination)) {
+        croak "Would you mind supplying me with a valid destination?";
+    }
 
-    unless (defined $self->{subscriptions}{$destination}) {
+    if (defined $self->{subscriptions}{$destination}) {
+        carp "You already subscribed to '$destination'.";
+    }
+    else {
         my $subscription_id = shift || int(rand(1000));
         $self->{subscriptions}{$destination} = $subscription_id;
         $self->send_frame(
@@ -172,15 +178,25 @@ sub unsubscribe {
     my $self = shift;
     my $destination = shift;
 
-    unless (defined $destination and $self->{subscriptions}{$destination}) {
+    unless ($self->is_destination_valid($destination)) {
+        croak "Would you mind supplying me with a valid destination?";
+    }
+    unless ($self->{subscriptions}{$destination}) {
         croak "You've never subscribed to '$destination', have you?";
     }
+
+    $self->{subscriptions}{$destination} = undef;
 
     $self->send_frame(
         'UNSUBSCRIBE',
         {id => $self->{subscriptions}{$destination}, receipt => 0},
         undef
     );
+}
+
+sub is_destination_valid {
+    my ($self, $destination) = @_;
+    return ($destination =~ m/^\/(?:queue|topic)\/.+$/);
 }
 
 sub header_hash2string {
@@ -280,14 +296,13 @@ sub send_heartbeat {
 }
 
 sub send {
-    my $self = shift;
-    my ($destination, $headers, $body) = @_;
+    my ($self, $destination, $headers, $body) = @_;
 
-    if ($destination =~ m/^\/(?:queue|topic)\/.+$/) {
+    if ($self->is_destination_valid($destination)) {
         $headers->{destination} = $destination;
     }
     else {
-        croak "Message destination not valid!";
+        croak "Would you mind supplying me with a valid destination?";
     }
 
     unless (defined $headers->{'content-length'}) {
@@ -375,8 +390,11 @@ sub on_disconnected {
 }
 
 sub on_message {
-    my $self = shift;
-    my ($cb, $destination) = @_;
+    my ($self, $cb, $destination) = @_;
+
+    unless ($self->is_destination_valid($destination)) {
+        croak "Would you mind supplying me with a valid destination?";
+    }
 
     if (defined $destination and defined $self->{subscriptions}{$destination}) {
         $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
@@ -392,6 +410,14 @@ sub on_receipt {
 
 sub on_error {
     shift->reg_cb('ERROR', shift);
+}
+
+sub on_subscribed {
+    shift->reg_cb('SUBSCRIBED', shift);
+}
+
+sub on_unsubscribed {
+    shift->reg_cb('UNSUBSCRIBED', shift);
 }
 
 1;
