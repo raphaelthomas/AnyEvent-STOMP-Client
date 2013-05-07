@@ -538,18 +538,41 @@ __END__
 
 =head1 NAME
 
-AnyEvent::STOMP::Client - Perl extension for blah blah blah
+AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 SYNOPSIS
 
   use AnyEvent::STOMP::Client;
-  blah blah blah
+  
+  my $stomp_client = AnyEvent::STOMP::Client->connect();
+
+  $stomp_client->on_connected(
+      sub {
+          my $self = shift;
+
+          $self->subscribe('/queue/test-destination', 'client');
+
+          $self->send(
+              '/queue/test-destination',
+              {'content-type' => 'text/plain',},
+              "Hello World!"
+          );
+
+          $self->disconnect;
+      }
+  );
+
+  $stomp_client->on_message(
+      sub {
+          my ($self, $header, $body) = @_;
+          print "$body\n";
+      }
+  );
+
+  AnyEvent->condvar->recv;
+
 
 =head1 DESCRIPTION
-
-Stub documentation for AnyEvent::STOMP::Client, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
 
 Blah blah blah.
 
