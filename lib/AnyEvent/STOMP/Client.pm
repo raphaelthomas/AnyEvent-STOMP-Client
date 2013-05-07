@@ -59,13 +59,13 @@ sub connect {
             my ($handle, $message) = @_;
             $handle->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED');
+            $self->event('DISCONNECTED', $self->{host}, $self->{port});
         },
         on_error => sub {
             my ($handle, $message) = @_;
             $handle->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED');
+            $self->event('DISCONNECTED', $self->{host}, $self->{port});
         },
         on_read => sub {
             $self->read_frame;
@@ -140,7 +140,7 @@ sub reset_server_heartbeat_timer {
         after => ($interval/1000+$TIMEOUT_MARGIN),
         cb => sub {
             $self->{connected} = 0;
-            $self->event('DISCONNECTED');
+            $self->event('DISCONNECTED', $self->{host}, $self->{port});
         }
     );
 }
