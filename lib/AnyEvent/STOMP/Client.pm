@@ -18,7 +18,6 @@ our $VERSION = '0.02';
 my $TIMEOUT_MARGIN = 1000;
 my $EOL = chr(10);
 my $NULL = chr(0);
-my $HEARTBEAT = '0,0';
 
 
 sub connect {
@@ -26,23 +25,34 @@ sub connect {
     my $self = $class->SUPER::new;
 
     $self->{connected} = 0;
-    $self->{host} = shift;
+    $self->{host} = shift || 'localhost';
     $self->{port} = shift || 61613;
-    $self->{heartbeat}{config}{client} = shift || $HEARTBEAT;
+
+    my $additional_headers = shift || {};
+    my $connect_headers = {
+        'accept-version' => '1.2',
+        'host' => $self->{host},
+        'heart-beat' => '0,0'
+    };
+
+    if (defined $additional_headers->{'heart-beat'}) {
+        $connect_headers->{'heart-beat'} = $additional_headers->{'heart-beat'};
+    }
+    $self->{heartbeat}{config}{client} = $connect_headers->{'heart-beat'};
+
+
+    if (defined $additional_headers->{'login'}
+        and defined $additional_headers->{'passcode'}
+    ) {
+        $connect_headers->{'login'} = $additional_headers->{'login'};
+        $connect_headers->{'passcode'} = $additional_headers->{'passcode'};
+    }
 
     $self->{handle} = AnyEvent::Handle->new(
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
         on_connect => sub {
-            $self->send_frame(
-                'CONNECT',
-                {
-                    'accept-version' => '1.2',
-                    'host' => $self->{host},
-                    'heart-beat' => $self->{heartbeat}{config}{client},
-                    # add login, passcode headers
-                }
-            );
+            $self->send_frame('CONNECT', $connect_headers);
         },
         on_connect_error => sub {
             my ($handle, $message) = @_;
