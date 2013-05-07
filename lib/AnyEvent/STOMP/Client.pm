@@ -368,6 +368,52 @@ sub send {
     $self->send_frame('SEND', $headers, $body);
 }
 
+sub begin_transaction {
+    my $self = shift;
+    my $id = shift;
+    my $additional_headers = shift || {};
+
+    croak "I really need a transaction identifier here!" unless (defined $id);
+
+    if (defined $self->{transactions}{$id}) {
+        carp "You've already begun transaction '$id'";
+    }
+    else {
+        $self->send_frame('BEGIN', {transaction => $id, %$additional_headers,});
+        $self->{transactions}{$id} = 1;
+    }
+}
+
+sub commit_transaction {
+    my $self = shift;
+    my $id = shift;
+    my $additional_headers = shift || {};
+
+    croak "I really need a transaction identifier here!" unless (defined $id);
+
+    unless (defined $self->{transactions}{$id}) {
+        carp "You've already commited transaction '$id'";
+    }
+
+    $self->send_frame('COMMIT', {transaction => $id, %$additional_headers,});
+    delete $self->{transactions}{$id};
+}
+
+sub abort_transaction {
+    my $self = shift;
+    my $id = shift;
+    my $additional_headers = shift || {};
+
+    croak "I really need a transaction identifier here!" unless (defined $id);
+
+    unless (defined $self->{transactions}{$id}) {
+        carp "You've already commited transaction '$id'";
+    }
+
+    $self->send_frame('ABORT', {transaction => $id, %$additional_headers,});
+    delete $self->{transactions}{$id};
+}
+
 sub read_frame {
     my $self = shift;
     $self->{handle}->unshift_read(
