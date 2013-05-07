@@ -185,13 +185,13 @@ sub unsubscribe {
         croak "You've never subscribed to '$destination', have you?";
     }
 
-    $self->{subscriptions}{$destination} = undef;
-
     $self->send_frame(
         'UNSUBSCRIBE',
         {id => $self->{subscriptions}{$destination}, receipt => 0},
         undef
     );
+
+    $self->{subscriptions}{$destination} = undef;
 }
 
 sub is_destination_valid {
