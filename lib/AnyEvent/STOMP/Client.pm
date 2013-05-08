@@ -62,10 +62,10 @@ sub connect {
             $self->event('DISCONNECTED', $self->{host}, $self->{port});
         },
         on_error => sub {
-            my ($handle, $message) = @_;
+            my ($handle, $code, $message) = @_;
             $handle->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port});
+            $self->event('DISCONNECTED', $self->{host}, $self->{port}, $code, $message);
         },
         on_read => sub {
             $self->read_frame;
@@ -504,7 +504,7 @@ sub on_disconnected {
 sub on_message {
     my ($self, $cb, $destination) = @_;
 
-    unless (not defined $destination or $self->is_destination_valid($destination)) {
+    if (defined $destination and not $self->is_destination_valid($destination)) {
         croak "Would you mind supplying me with a valid destination?";
     }
 
