@@ -3,8 +3,6 @@
 #
 # Basic Example of AnyEvent::STOMP::Client
 #
-# Written by Raphael Seebacher raphael@seebachers.ch
-#
 ################################################################################
 
 use lib '../lib';
@@ -16,22 +14,21 @@ $stomp_client->on_connected(
     sub {
         my $self = shift;
 
-        $self->subscribe('/queue/test-destination', 'client');
+        $self->subscribe('/queue/test-destination');
 
         $self->send(
             '/queue/test-destination',
             {'content-type' => 'text/plain',},
             "Hello World!"
         );
-
-        $self->disconnect;
     }
 );
 
 $stomp_client->on_message(
     sub {
-        my ($self, $header, $body) = @_;
+        my ($self, undef, $body) = @_;
         print "$body\n";
+        $self->disconnect;
     }
 );
 

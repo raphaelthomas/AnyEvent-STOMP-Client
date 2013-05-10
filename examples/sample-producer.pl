@@ -3,8 +3,6 @@
 #
 # Sample STOMP Message Producer using AnyEvent::STOMP::Client
 #
-# Written by Raphael Seebacher raphael@seebachers.ch
-#
 ################################################################################
 
 use lib '../lib';
