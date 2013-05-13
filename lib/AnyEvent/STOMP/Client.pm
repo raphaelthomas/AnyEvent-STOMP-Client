@@ -25,6 +25,7 @@ sub connect {
     my $self = $class->SUPER::new;
 
     $self->{connected} = 0;
+    $self->{counter} = 0;
     $self->{host} = shift || 'localhost';
     $self->{port} = shift || 61613;
 
@@ -77,7 +78,7 @@ sub connect {
 
 sub disconnect {
     my $self = shift;
-    $self->send_frame('DISCONNECT', {receipt => int(rand(1000)),}) if $self->is_connected;
+    $self->send_frame('DISCONNECT', {receipt => $self->get_uuid,}) if $self->is_connected;
     $self->{connected} = 0;
 }
 
@@ -145,6 +146,11 @@ sub reset_server_heartbeat_timer {
     );
 }
 
+sub get_uuid {
+    my $self = shift;
+    return time.$self->{counter}++;
+}
+
 sub subscribe {
     my $self = shift;
     my $destination = shift;
@@ -167,7 +173,7 @@ sub subscribe {
         }
     }
     else {
-        my $subscription_id = shift || int(rand(1000));
+        my $subscription_id = shift || $self->get_uuid;
         $self->{subscriptions}{$destination} = $subscription_id;
 
         my $header = {
@@ -179,7 +185,7 @@ sub subscribe {
 
         if ($self->handles('SUBSCRIBED')) {
             unless (defined $header->{receipt}) {
-                $header->{receipt} = int(rand(1000));
+                $header->{receipt} = $self->get_uuid;
             }
 
             $self->on_receipt(
@@ -217,7 +223,7 @@ sub unsubscribe {
     };
 
     if ($self->handles('UNSUBSCRIBED')) {
-        $header->{receipt} = int(rand(1000)) unless defined $header->{receipt};
+        $header->{receipt} = $self->get_uuid unless defined $header->{receipt};
 
         $self->on_receipt(
             sub {
