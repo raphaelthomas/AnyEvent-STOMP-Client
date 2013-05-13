@@ -577,7 +577,8 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 DESCRIPTION
 
-A STOMP client supporting STOMP version 1.2 written in Perl based on AnyEvent and Object::Event. 
+A STOMP client supporting STOMP version 1.2 written in Perl based on AnyEvent
+and Object::Event.
 
 =head1 METHODS
 
@@ -607,6 +608,7 @@ this parameter.
 =back
 
 =head3 Example
+
 C<< my $client = AnyEvent::STOMP::Client->connect(
     '127.0.0.1',
     61614,
@@ -780,7 +782,8 @@ can be registered for the following events:
 
 =item $guard = $client->on_connected $callback
 
-Invoked when a CONNECTED frame is received.
+Invoked when a CONNECTED frame is received. Parameters passed to the callback:
+C<$self>, C<$header_hashref>.
 
 =item $guard = $client->on_disconnected $callback
 
@@ -788,36 +791,45 @@ Invoked after having successfully disconnected from a broker. I.e. when a
 callback is registered for this event and the C<disconnect> subroutine is
 called, then a receipt header is included in the DISCONNECT frame and the
 disconnected event is fired upon receiving the receipt for the DISCONNECT frame.
+Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =item $guard = $client->on_send_frame $callback
 
-Invoked when the STOMP frame is sent.
+Invoked when the STOMP frame is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
 
 =item $guard = $client->on_read_frame $callback
 
 Invoked when a STOMP frame is received (irrespective of the STOMP command).
+Parameters passed to the callback: C<$self>, C<$command>, C<$header_hashref>,
+C<$body> (may be C<undef>, if the frame is not specified to contain a body).
 
 =item $guard = $client->on_message $callback
 
-Invoked when a MESSAGE frame is received.
+Invoked when a MESSAGE frame is received. Parameters passed to the callback:
+C<$self>, C<$header_hashref>, C<$body>.
 
 =item $guard = $client->on_receipt $callback
 
-Invoked when a RECEIPT frame is received.
+Invoked when a RECEIPT frame is received. Parameters passed to the callback:
+C<$self>, C<$header_hashref>.
 
 =item $guard = $client->on_error $callback
 
-Invoked when an ERROR frame is received.
+Invoked when an ERROR frame is received. Parameters passed to the callback:
+C<$self>, C<$header_hashref>, C<$body>.
 
 =item $guard = $client->on_subscribed $callback
 
 Invoked after having successfully subscribed to a destination. Works behind the
-scenes like the C<on_disconnected> described above.
+scenes like the C<on_disconnected> described above. Parameters passed to the
+callback: C<$self>, C<$destination>.
 
 =item $guard = $client->on_unsubscribed $callback
 
 Invoked after having successfully unsubscribed to a destination. Works behind
-the scenes like the C<on_disconnected> described above.
+the scenes like the C<on_disconnected> described above. Parameters passed to the
+callback: C<$self>, C<$destination>.
 
 =back
 
@@ -829,13 +841,15 @@ To unregister a previously registered callback.
 
 =item C<$guard>
 
-The return value of one of the above on_<xyz> subroutines, identifying the registered callback.
+The return value of one of the above on_<xyz> subroutines, identifying the
+registered callback.
 
 =back
 
 =head1 SEE ALSO
 
-L<AnyEvent>, L<Object::Event>, L<STOMP v1.2 Documentation|http://stomp.github.io/stomp-specification-1.2.html>
+L<AnyEvent>, L<Object::Event>,
+L<STOMP v1.2 Documentation|http://stomp.github.io/stomp-specification-1.2.html>
 
 =head1 AUTHOR
 
@@ -843,7 +857,7 @@ Raphael Seebacher, E<lt>raphael@seebachers.chE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by Open Systems AG L<www.open.ch>. All rights reserved.
+Copyright (C) 2013 by L<Open Systems AG|www.open.ch>. All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
