@@ -77,13 +77,13 @@ sub connect {
 
 sub disconnect {
     my $self = shift;
-    $self->send_frame('DISCONNECT', {receipt => int(rand(1000)),});
+    $self->send_frame('DISCONNECT', {receipt => int(rand(1000)),}) if $self->is_connected;
     $self->{connected} = 0;
 }
 
 sub DESTROY {
     my $self = shift;
-    $self->disconnect if $self->is_connected;
+    $self->disconnect;
 }
 
 sub is_connected {
@@ -425,7 +425,10 @@ sub read_frame {
 
             $self->reset_server_heartbeat_timer;
 
-            unless ($command =~ /CONNECTED|MESSAGE|RECEIPT|ERROR/) {
+            if ($command =~ /(CONNECTED|MESSAGE|RECEIPT|ERROR)/) {
+                $command = $1;
+            }
+            else {
                 return;
             }
 
