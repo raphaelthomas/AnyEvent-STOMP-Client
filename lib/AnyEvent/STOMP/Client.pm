@@ -195,6 +195,8 @@ sub subscribe {
 
         $self->send_frame('SUBSCRIBE', $header);
     }
+
+    return $self->{subscriptions}{$destination};
 }
 
 sub unsubscribe {
@@ -229,7 +231,7 @@ sub unsubscribe {
     }
 
     $self->send_frame('UNSUBSCRIBE', $header);
-    $self->{subscriptions}{$destination} = undef;
+    delete $self->{subscriptions}{$destination};
 }
 
 sub is_destination_valid {
@@ -483,11 +485,6 @@ sub read_frame {
     );
 }
 
-sub unregister_callback {
-    my ($self, $guard) = @_;
-    $self->unreg_cb($guard);
-}
-
 sub on_send_frame {
     return shift->reg_cb('SEND_FRAME', shift);
 }
@@ -535,6 +532,11 @@ sub on_unsubscribed {
     return shift->reg_cb('UNSUBSCRIBED', shift);
 }
 
+sub unregister_callback {
+    my ($self, $guard) = @_;
+    $self->unreg_cb($guard);
+}
+
 1;
 
 __END__
@@ -577,9 +579,57 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head2 METHODS
 
+=over 4
+
+=item $client = connect $host, $port, $connect_headers
+
+=item $client->disconnect
+
+=item bool $client->is_connected
+
+=item $subscription_id = $client->subscribe $destination, $ack_mode, $additional_headers
+
+=item $client->unsubscribe $destination, $additional_headers
+
+=item $client->send_frame $command, $header, $body
+
+=item $client->ack $ack_id, $transaction_id
+
+=item $client->nack $ack_id, $transaction_id
+
+=item $client->send $destination, $headers, $body
+
+=item $client->begin_transaction $transaction_id, $additional_headers
+
+=item $client->commit_transaction $transaction_id, $additional_headers
+
+=item $client->abort_transaction $transaction_id, $additional_headers
+
+=item $guard = $client->on_send_frame
+
+=item $guard = $client->on_read_frame
+
+=item $guard = $client->on_connected
+
+=item $guard = $client->on_disconnected
+
+=item $guard = $client->on_message
+
+=item $guard = $client->on_receipt
+
+=item $guard = $client->on_error
+
+=item $guard = $client->on_subscribed
+
+=item $guard = $client->on_unsubscribed
+
+=item $client->unregister_callback $guard
+
+=back
+
 =head1 SEE ALSO
 
-L<AnyEvent>, L<Object::Event>
+L<AnyEvent>, L<Object::Event>, L<STOMP Documentation|http://stomp.github.io/stomp-specification-1.2.html>
 
 =head1 AUTHOR
 
