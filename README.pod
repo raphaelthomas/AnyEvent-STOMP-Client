@@ -1,0 +1,53 @@
+=head1 NAME
+
+AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
+
+=head1 SYNOPSIS
+
+  use AnyEvent::STOMP::Client;
+  
+  my $stomp_client = AnyEvent::STOMP::Client->connect();
+
+  $stomp_client->on_connected(
+      sub {
+          my $self = shift;
+
+          $self->subscribe('/queue/test-destination');
+
+          $self->send(
+              '/queue/test-destination',
+              {'content-type' => 'text/plain',},
+              "Hello World!"
+          );
+      }
+  );
+
+  $stomp_client->on_message(
+      sub {
+          my ($self, $header, $body) = @_;
+          print "$body\n";
+      }
+  );
+
+  AnyEvent->condvar->recv;
+
+
+=head1 DESCRIPTION
+
+=head2 METHODS
+
+=head1 SEE ALSO
+
+L<AnyEvent>, L<Object::Event>
+
+=head1 AUTHOR
+
+Raphael Seebacher, E<lt>raphael@seebachers.chE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2013 by Raphael Seebacher
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+

@@ -553,15 +553,13 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
       sub {
           my $self = shift;
 
-          $self->subscribe('/queue/test-destination', 'client');
+          $self->subscribe('/queue/test-destination');
 
           $self->send(
               '/queue/test-destination',
               {'content-type' => 'text/plain',},
               "Hello World!"
           );
-
-          $self->disconnect;
       }
   );
 
@@ -577,24 +575,11 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 DESCRIPTION
 
-Blah blah blah.
-
-=head2 EXPORT
-
-None by default.
-
-
+=head2 METHODS
 
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+L<AnyEvent>, L<Object::Event>
 
 =head1 AUTHOR
 
@@ -606,6 +591,5 @@ Copyright (C) 2013 by Raphael Seebacher
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
-
 
 =cut
