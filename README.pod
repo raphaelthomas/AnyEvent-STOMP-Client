@@ -34,59 +34,265 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 DESCRIPTION
 
-=head2 METHODS
+A STOMP client supporting STOMP version 1.2 written in Perl based on AnyEvent and Object::Event. 
 
-=over 4
+=head1 METHODS
 
-=item $client = connect $host, $port, $connect_headers
+=head2 $client = connect $host, $port, $connect_headers
 
-=item $client->disconnect
+Connect to a STOMP-compatible message broker. Returns an instance of
+AnyEvent::STOMP::Client.
 
-=item bool $client->is_connected
+=over
 
-=item $subscription_id = $client->subscribe $destination, $ack_mode, $additional_headers
+=item C<$host>
 
-=item $client->unsubscribe $destination, $additional_headers
+String, optional, defaults to C<localhost>. The host, where a STOMP-compatible
+message broker is running.
 
-=item $client->send_frame $command, $header, $body
+=item C<$port>
 
-=item $client->ack $ack_id, $transaction_id
+Integer, optional, defaults to C<61613>. The TCP port we connect to. I.e. the
+port where the message broker instance is listening.
 
-=item $client->nack $ack_id, $transaction_id
+=item C<$connect_headers>
 
-=item $client->send $destination, $headers, $body
+Hash, optional, empty by default. May be used to add arbitrary headers to the
+STOMP CONNECT frame. STOMP login headers would, for example, be supplied using
+this parameter.
 
-=item $client->begin_transaction $transaction_id, $additional_headers
+=back
 
-=item $client->commit_transaction $transaction_id, $additional_headers
+=head3 Example
+C<< my $client = AnyEvent::STOMP::Client->connect(
+    '127.0.0.1',
+    61614,
+    {login => 'guest', passcode => 'guest'}
+); >>
 
-=item $client->abort_transaction $transaction_id, $additional_headers
+=head2 $client->disconnect
 
-=item $guard = $client->on_send_frame
+Sends a DISCONNECT STOMP frame to the message broker (if we are still
+connected).
 
-=item $guard = $client->on_read_frame
+=head2 bool $client->is_connected
 
-=item $guard = $client->on_connected
+Check whether we are still connected to the broker. May only be accurate if
+STOMP heart-beats are used.
 
-=item $guard = $client->on_disconnected
+=head2 $subscription_id = $client->subscribe $destination, $ack_mode, $additional_headers
 
-=item $guard = $client->on_message
+Subscribe to a destination by sending a SUBSCRIBE STOMP frame to the message
+broker. Returns the subscription identifier.
 
-=item $guard = $client->on_receipt
+=over
 
-=item $guard = $client->on_error
+=item C<$destination>
 
-=item $guard = $client->on_subscribed
+String, mandatory. The destination to which we want to subscribe to.
 
-=item $guard = $client->on_unsubscribed
+=item C<$ack_mode>
 
-=item $client->unregister_callback $guard
+C<auto> | C<client> | C<client-individual>, optional, defaults to C<auto>.
+See the STOMP documentation for further information on acknowledgement modes.
+
+=item C<$additional_headers>
+
+Used to pass arbitrary headers to the SUBSCRIBE STOMP frame. Broker specific
+flow control parameters for example is what would want to supply here.
+
+=back
+
+=head2 $client->unsubscribe $destination, $additional_headers
+
+Unsubscribe from a destination by sending an UNSUBSCRIBE STOMP frame to the
+message broker.
+
+=over
+
+=item C<$destination>
+
+String, mandatory. The destination from which we want to unsubscribe.
+
+=item C<$additional_headers>
+
+Used to pass arbitrary headers to the SUBSCRIBE STOMP frame.
+
+=back
+
+=head2 $client->send $destination, $headers, $body
+
+Send a STOMP MESSAGE to the message broker.
+
+=over
+
+=item C<$destination>
+
+String, mandatory. The destination to which to send the message to.
+
+=item C<$header>
+
+Hash, optional, empty by default. Arbitrary headers included in the MESSAGE
+frame. See the STOMP documentation for supported headers.
+
+=item C<$body>
+
+String, optional, empty by default. The body of the message, according to the
+content-type specified in the header.
+
+=back
+
+=head2 $client->ack $ack_id, $transaction_id
+
+Send an ACK frame to acknowledge a received message.
+
+=over
+
+=item C<$ack_id>
+
+String, mandatory. Has to match the 'ack' header of the message that is to be
+acknowledged.
+
+=item C<$transaction_id>
+
+String, optional. A transaction identifier, if the ACK is part of a transaction.
+
+=back
+
+=head2 $client->nack $ack_id, $transaction_id
+
+Send an NACK frame to NOT acknowledge a received message.
+
+=over
+
+=item C<$ack_id>
+
+String, mandatory. Has to match the 'ack' header of the message that is to be
+nacked.
+
+=item C<$transaction_id>
+
+String, optional. A transaction identifier, if the NACK is part of a
+transaction.
+
+=back
+
+=head2 $client->begin_transaction $transaction_id, $additional_headers
+
+Begin a STOMP transaction.
+
+=over
+
+=item C<$transaction_id>
+
+String, mandatory. A unique identifier for the transaction.
+
+=item C<$additional_headers>
+
+Hash, optional, empty by default. Used to pass arbitrary headers to the STOMP
+frame.
+
+=back
+
+=head2 $client->commit_transaction $transaction_id, $additional_headers
+
+Commit a STOMP transaction.
+
+=over
+
+=item C<$transaction_id>
+
+String, mandatory. A unique identifier for the transaction.
+
+=item C<$additional_headers>
+
+Hash, optional, empty by default. Used to pass arbitrary headers to the STOMP
+frame.
+
+=back
+
+=head2 $client->abort_transaction $transaction_id, $additional_headers
+
+Abort a STOMP transaction.
+
+=over
+
+=item C<$transaction_id>
+
+String, mandatory. A unique identifier for the transaction.
+
+=item C<$additional_headers>
+
+Hash, optional, empty by default. Used to pass arbitrary headers to the STOMP
+frame.
+
+=back
+
+=head2 Callbacks
+
+In order for the C<AnyEvent::STOMP::Client> to be useful, callback subroutines
+can be registered for the following events:
+
+=over
+
+=item $guard = $client->on_connected $callback
+
+Invoked when a CONNECTED frame is received.
+
+=item $guard = $client->on_disconnected $callback
+
+Invoked after having successfully disconnected from a broker. I.e. when a
+callback is registered for this event and the C<disconnect> subroutine is
+called, then a receipt header is included in the DISCONNECT frame and the
+disconnected event is fired upon receiving the receipt for the DISCONNECT frame.
+
+=item $guard = $client->on_send_frame $callback
+
+Invoked when the STOMP frame is sent.
+
+=item $guard = $client->on_read_frame $callback
+
+Invoked when a STOMP frame is received (irrespective of the STOMP command).
+
+=item $guard = $client->on_message $callback
+
+Invoked when a MESSAGE frame is received.
+
+=item $guard = $client->on_receipt $callback
+
+Invoked when a RECEIPT frame is received.
+
+=item $guard = $client->on_error $callback
+
+Invoked when an ERROR frame is received.
+
+=item $guard = $client->on_subscribed $callback
+
+Invoked after having successfully subscribed to a destination. Works behind the
+scenes like the C<on_disconnected> described above.
+
+=item $guard = $client->on_unsubscribed $callback
+
+Invoked after having successfully unsubscribed to a destination. Works behind
+the scenes like the C<on_disconnected> described above.
+
+=back
+
+=head3 $client->unregister_callback $guard
+
+To unregister a previously registered callback.
+
+=over
+
+=item C<$guard>
+
+The return value of one of the above on_<xyz> subroutines, identifying the registered callback.
 
 =back
 
 =head1 SEE ALSO
 
-L<AnyEvent>, L<Object::Event>, L<STOMP Documentation|http://stomp.github.io/stomp-specification-1.2.html>
+L<AnyEvent>, L<Object::Event>, L<STOMP v1.2 Documentation|http://stomp.github.io/stomp-specification-1.2.html>
 
 =head1 AUTHOR
 
@@ -94,7 +300,7 @@ Raphael Seebacher, E<lt>raphael@seebachers.chE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by Raphael Seebacher
+Copyright (C) 2013 by Open Systems AG L<www.open.ch>. All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
