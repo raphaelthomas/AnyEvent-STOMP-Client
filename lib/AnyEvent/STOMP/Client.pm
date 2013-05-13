@@ -857,7 +857,7 @@ Raphael Seebacher, E<lt>raphael@seebachers.chE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by L<Open Systems AG|www.open.ch>. All rights reserved.
+Copyright (C) 2013 by L<Open Systems AG|http://www.open.ch>. All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

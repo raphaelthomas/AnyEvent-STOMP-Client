@@ -34,7 +34,8 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 DESCRIPTION
 
-A STOMP client supporting STOMP version 1.2 written in Perl based on AnyEvent and Object::Event. 
+A STOMP client supporting STOMP version 1.2 written in Perl based on AnyEvent
+and Object::Event.
 
 =head1 METHODS
 
@@ -313,7 +314,7 @@ Raphael Seebacher, E<lt>raphael@seebachers.chE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2013 by L<Open Systems AG|www.open.ch>. All rights reserved.
+Copyright (C) 2013 by L<Open Systems AG|http://www.open.ch>. All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
