@@ -41,12 +41,18 @@ sub connect {
     }
     $self->{heartbeat}{config}{client} = $connect_headers->{'heart-beat'};
 
-
     if (defined $additional_headers->{'login'}
         and defined $additional_headers->{'passcode'}
     ) {
         $connect_headers->{'login'} = $additional_headers->{'login'};
         $connect_headers->{'passcode'} = $additional_headers->{'passcode'};
+    }
+
+    my $tls_ctx = shift;
+    my $tls_hash = {};
+    if (defined $tls_ctx) {
+        $tls_hash->{tls} = 'connect';
+        $tls_hash->{tls_ctx} = $tls_ctx;
     }
 
     $self->{handle} = AnyEvent::Handle->new(
@@ -71,6 +77,7 @@ sub connect {
         on_read => sub {
             $self->read_frame;
         },
+        %$tls_hash,
     );
 
     return bless $self, $class;
@@ -596,7 +603,7 @@ on_message($callback)).
 
 =head1 METHODS
 
-=head2 $client = connect $host, $port, $connect_headers
+=head2 $client = connect $host, $port, $connect_headers, $tls_context
 
 Connect to a STOMP-compatible message broker. Returns an instance of
 AnyEvent::STOMP::Client.
@@ -618,6 +625,11 @@ port where the message broker instance is listening.
 Hash, optional, empty by default. May be used to add arbitrary headers to the
 STOMP CONNECT frame. STOMP login headers would, for example, be supplied using
 this parameter.
+
+=item C<$tls_context>
+
+Hash, optional, undef by default. May be used to supply a SSL/TLS context
+directly to C<AnyEvent::Handle>. See L<AnyEvent::TLS> for documentation.
 
 =back
 
@@ -877,7 +889,7 @@ SSL/TLS is not yet supported (even though AnyEvent::Handle does :-)
 
 =head1 SEE ALSO
 
-L<AnyEvent>, L<Object::Event>,
+L<AnyEvent>, L<AnyEvent::Handle>, L<AnyEvent::TLS>, L<Object::Event>,
 L<STOMP v1.2 Documentation|http://stomp.github.io/stomp-specification-1.2.html>
 
 =head1 AUTHOR
