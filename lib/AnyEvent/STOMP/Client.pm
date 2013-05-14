@@ -583,8 +583,16 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 DESCRIPTION
 
-A STOMP client supporting STOMP version 1.2 written in Perl based on AnyEvent
-and Object::Event.
+Summary: An event-based non-blocking STOMP v1.2 client written in Perl based on
+AnyEvent and Object::Event.
+
+AnyEvent::STOMP::Client provides a STOMP (Simple Text Oriented Messaging
+Protocol) client. Thanks to AnyEvent, AnyEvent::STOMP::Client is completely
+non-blocking, by making extensive use of the AnyEvent::Handle and timers (and,
+under the hood, AnyEvent::Socket). Building on Object::Event,
+AnyEvent::STOMP::Client implements various events (e.g. the MESSAGE event, when
+a STOMP MESSAGE frame is received) and offers callbacks for these (e.g.
+on_message($callback)).
 
 =head1 METHODS
 
@@ -851,6 +859,21 @@ The return value of one of the above on_<xyz> subroutines, identifying the
 registered callback.
 
 =back
+
+=head1 BUGS / LIMITATIONS
+
+=over
+
+=item
+
+Currently only the most recent version of STOMP, i.e. 1.2, is supported.
+
+=item
+
+SSL/TLS is not yet supported (even though AnyEvent::Handle does :-)
+
+=back
+
 
 =head1 SEE ALSO
 
