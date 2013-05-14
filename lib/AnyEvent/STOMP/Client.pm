@@ -893,10 +893,6 @@ registered callback.
 
 Currently only the most recent version of STOMP, i.e. 1.2, is supported.
 
-=item
-
-SSL/TLS is not yet supported (even though AnyEvent::Handle does :-)
-
 =back
 
 
