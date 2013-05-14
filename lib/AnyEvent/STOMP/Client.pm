@@ -571,7 +571,8 @@ __END__
 
 =head1 NAME
 
-AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
+AnyEvent::STOMP::Client - An event-based non-blocking STOMP 1.2 client based on
+AnyEvent and Object::Event.
 
 =head1 SYNOPSIS
 
@@ -604,9 +605,6 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 
 =head1 DESCRIPTION
-
-Summary: An event-based non-blocking STOMP 1.2 client written in Perl based on
-AnyEvent and Object::Event.
 
 AnyEvent::STOMP::Client provides a STOMP (Simple Text Oriented Messaging
 Protocol) client. Thanks to AnyEvent, AnyEvent::STOMP::Client is completely
