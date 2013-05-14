@@ -1,11 +1,16 @@
-Revision history for Perl extension AnyEvent::STOMP::Client.
+Revision history for AnyEvent::STOMP::Client.
 
-0.02  Mon May  6 08:30:51 2013
+0.1   Tue May 14
+    - Fully implemented STOMP 1.2.
+    - Added SSL/TLS support.
+    - Documentation written.
+
+0.02  Mon May  6
     - Improved STOMP MESSAGE parsing.
 	- Improved event and callback functionality.
     - STOMP Heartbeating added.
     - Ack, nack, subscribe and unsubscribe functions implemented.
 
-0.01  Fri May  3 08:30:51 2013
+0.01  Fri May  3
 	- initial rudimentary version.
 
