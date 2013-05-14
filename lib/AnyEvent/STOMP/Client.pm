@@ -18,6 +18,13 @@ our $VERSION = '0.02';
 my $TIMEOUT_MARGIN = 1000;
 my $EOL = chr(10);
 my $NULL = chr(0);
+my %ENCODE_MAP = (
+    "\r" => "\\r",
+    "\n" => "\\n",
+    ":"  => "\\c",
+    "\\" => "\\\\",
+);
+my %DECODE_MAP = reverse %ENCODE_MAP;
 
 
 sub connect {
@@ -263,7 +270,6 @@ sub header_string2hash {
 
     foreach (split /\n/, $header_string) {
         if (m/([^\r\n:]+):([^\r\n:]*)/) {
-            # add header decoding
             # Repeated Header Entries: Do not replace if it already exists
             $result_hashref->{$1} = $2 unless defined $result_hashref->{$1};
         }
@@ -274,20 +280,13 @@ sub header_string2hash {
 
 sub encode_header {
     my $header_hashref = shift;
+    my $result_hashref = {};
 
-    my $ESCAPE_MAP = {
-        chr(92) => '\\\\',
-        chr(13) => '\\r',
-        chr(10) => '\\n',
-        chr(58) => '\c',
-    };
-    my $ESCAPE_KEYS = '['.join('', map(sprintf('\\x%02x', ord($_)), keys(%$ESCAPE_MAP))).']';
-
-    my $result_hashref;
+    my $ENCODE_KEYS = '['.join('', map(sprintf('\\x%02x', ord($_)), keys(%ENCODE_MAP))).']';
 
     while (my ($k, $v) = each(%$header_hashref)) {
-        $v =~ s/($ESCAPE_KEYS)/$ESCAPE_MAP->{$1}/ego;
-        $k =~ s/($ESCAPE_KEYS)/$ESCAPE_MAP->{$1}/ego;
+        $v =~ s/($ENCODE_KEYS)/$ENCODE_MAP{$1}/ego;
+        $k =~ s/($ENCODE_KEYS)/$ENCODE_MAP{$1}/ego;
         $result_hashref->{$k} = $v;
     }
 
@@ -296,9 +295,19 @@ sub encode_header {
 
 sub decode_header {
     my $header_hashref = shift;
-    # treat escape sequences like \t as fatal error
+    my $result_hashref = {};
 
-    return $header_hashref;
+    while (my ($k, $v) = each(%$header_hashref)) {
+        if ($v =~ m/(\\.)/) {
+            $v =~ s/(\\.)/$DECODE_MAP{$1}/eg || croak "Invalid header value.";
+        }
+        if ($k =~ m/(\\.)/) {
+            $k =~ s/(\\.)/$DECODE_MAP{$1}/eg || croak "Invalid header key.";
+        }
+        $result_hashref->{$k} = $v;
+    }
+
+    return $result_hashref;
 }
 
 sub send_frame {
@@ -454,6 +463,12 @@ sub read_frame {
                     my $header_hashref = header_string2hash($header_string);
                     my $args;
 
+                    # The headers of the CONNECTED frame are not en-/decoded
+                    # for backwards compatibility with STOMP 1.0
+                    unless ($command eq 'CONNECTED') {
+                        $header_hashref = decode_header($header_hashref);
+                    }
+
                     if ($command =~ m/MESSAGE|ERROR/) {
                         if (defined $header_hashref->{'content-length'}) {
                             $args->{chunk} = $header_hashref->{'content-length'};
@@ -590,7 +605,7 @@ AnyEvent::STOMP::Client - A Perl STOMP version 1.2 client based on AnyEvent
 
 =head1 DESCRIPTION
 
-Summary: An event-based non-blocking STOMP v1.2 client written in Perl based on
+Summary: An event-based non-blocking STOMP 1.2 client written in Perl based on
 AnyEvent and Object::Event.
 
 AnyEvent::STOMP::Client provides a STOMP (Simple Text Oriented Messaging
@@ -890,7 +905,7 @@ SSL/TLS is not yet supported (even though AnyEvent::Handle does :-)
 =head1 SEE ALSO
 
 L<AnyEvent>, L<AnyEvent::Handle>, L<AnyEvent::TLS>, L<Object::Event>,
-L<STOMP v1.2 Documentation|http://stomp.github.io/stomp-specification-1.2.html>
+L<STOMP 1.2 Documentation|http://stomp.github.io/stomp-specification-1.2.html>
 
 =head1 AUTHOR
 
