@@ -12,7 +12,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.1';
+our $VERSION = '0.11';
 
 
 my $TIMEOUT_MARGIN = 1000;
@@ -175,8 +175,8 @@ sub subscribe {
         croak "Invalid acknowledgement mode '$ack_mode'. "
             ."Valid modes are 'auto', 'client' and 'client-individual'."
     }
-    unless ($self->is_destination_valid($destination)) {
-        croak "Would you mind supplying me with a valid destination?";
+    unless (defined $destination) {
+        croak "Would you mind supplying me with a destination?";
     }
 
     if (defined $self->{subscriptions}{$destination}) {
@@ -224,8 +224,8 @@ sub unsubscribe {
     my $destination = shift;
     my $additional_headers = shift || {};
 
-    unless ($self->is_destination_valid($destination)) {
-        croak "Would you mind supplying me with a valid destination?";
+    unless (defined $destination) {
+        croak "Would you mind supplying me with a destination?";
     }
     unless ($self->{subscriptions}{$destination}) {
         croak "You've never subscribed to '$destination', have you?";
@@ -252,11 +252,6 @@ sub unsubscribe {
 
     $self->send_frame('UNSUBSCRIBE', $header);
     delete $self->{subscriptions}{$destination};
-}
-
-sub is_destination_valid {
-    my ($self, $destination) = @_;
-    return ($destination =~ m/^\/(?:queue|topic)\/.+$/);
 }
 
 sub header_hash2string {
@@ -345,11 +340,11 @@ sub send_frame {
 sub send {
     my ($self, $destination, $headers, $body) = @_;
 
-    if ($self->is_destination_valid($destination)) {
+    if (defined $destination) {
         $headers->{destination} = $destination;
     }
     else {
-        croak "Would you mind supplying me with a valid destination?";
+        croak "Would you mind supplying me with a destination?";
     }
 
     unless (defined $headers->{'content-length'}) {
@@ -532,8 +527,8 @@ sub on_read_frame {
 sub on_message {
     my ($self, $cb, $destination) = @_;
 
-    if (defined $destination and not $self->is_destination_valid($destination)) {
-        croak "Would you mind supplying me with a valid destination?";
+    if (defined $destination) {
+        croak "Would you mind supplying me with a destination?";
     }
 
     if (defined $destination and defined $self->{subscriptions}{$destination}) {

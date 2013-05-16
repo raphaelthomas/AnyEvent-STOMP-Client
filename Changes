@@ -1,16 +1,19 @@
 Revision history for AnyEvent::STOMP::Client.
 
-0.1   Tue May 14
+0.11  Fri May 17, 2013
+    - Hotfixed too strict destination header checking
+
+0.1   Tue May 14, 2013
     - Fully implemented STOMP 1.2.
     - Added SSL/TLS support.
     - Documentation written.
 
-0.02  Mon May  6
+0.02  Mon May  6, 2013
     - Improved STOMP MESSAGE parsing.
 	- Improved event and callback functionality.
     - STOMP Heartbeating added.
     - Ack, nack, subscribe and unsubscribe functions implemented.
 
-0.01  Fri May  3
+0.01  Fri May  3, 2013
 	- initial rudimentary version.
 
