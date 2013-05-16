@@ -12,7 +12,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.1';
+our $VERSION = '0.11';
 
 
 my $TIMEOUT_MARGIN = 1000;
