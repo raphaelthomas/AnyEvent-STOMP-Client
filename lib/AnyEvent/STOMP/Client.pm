@@ -842,7 +842,22 @@ Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =item $guard = $client->on_send_frame $callback
 
-Invoked when the STOMP frame is sent. Parameters passed to the callback:
+Invoked when a STOMP frame is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=item $guard = $client->on_send $callback
+
+Invoked when a STOMP SEND command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=item $guard = $client->on_ack $callback
+
+Invoked when a STOMP ACK command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=item $guard = $client->on_nack $callback
+
+Invoked when a STOMP NACK command is sent. Parameters passed to the callback:
 C<$self>, C<$frame> (the sent frame as string).
 
 =item $guard = $client->on_read_frame $callback
