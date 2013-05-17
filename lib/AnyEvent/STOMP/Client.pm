@@ -15,7 +15,6 @@ use List::Util 'max';
 our $VERSION = '0.11';
 
 
-my $TIMEOUT_MARGIN = 1000;
 my $EOL = chr(10);
 my $NULL = chr(0);
 my %ENCODE_MAP = (
@@ -31,6 +30,7 @@ sub connect {
     my $class = shift;
     my $self = $class->SUPER::new;
 
+    $self->{connection_timeout_margin} = 100;
     $self->{connected} = 0;
     $self->{counter} = 0;
     $self->{host} = shift || 'localhost';
@@ -105,6 +105,18 @@ sub is_connected {
     return shift->{connected};
 }
 
+sub set_connection_timeout_margin {
+    my ($self, $new_connection_timeout_margin) = @_;
+
+    if ($new_connection_timeout_margin =~ m/^\d+$/) {
+        $self->{connection_timeout_margin} = $new_connection_timeout_margin;
+    }
+}
+
+sub get_connection_timeout_margin {
+    return shift->{connection_timeout_margin};
+}
+
 sub set_heartbeat_intervals {
     my $self = shift;
     $self->{heartbeat}{config}{server} = shift;
@@ -152,7 +164,7 @@ sub reset_server_heartbeat_timer {
     }
 
     $self->{heartbeat}{timer}{server} = AnyEvent->timer(
-        after => ($interval/1000+$TIMEOUT_MARGIN),
+        after => (($interval+$self->get_connection_timeout_margin)/1000),
         cb => sub {
             $self->{connected} = 0;
             $self->event('DISCONNECTED', $self->{host}, $self->{port});
