@@ -333,6 +333,7 @@ sub send_frame {
     }
 
     $self->event('SEND_FRAME', $frame);
+    $self->event($command, $frame) if ($command =~ m/SEND|ACK|NACK|/);
     $self->{handle}->push_write($frame);
     $self->reset_client_heartbeat_timer;
 }
@@ -518,6 +519,18 @@ sub on_disconnected {
 
 sub on_send_frame {
     return shift->reg_cb('SEND_FRAME', shift);
+}
+
+sub on_send {
+    return shift->reg_cb('SEND', shift);
+}
+
+sub on_ack {
+    return shift->reg_cb('ACK', shift);
+}
+
+sub on_nack {
+    return shift->reg_cb('NACK', shift);
 }
 
 sub on_read_frame {
@@ -829,7 +842,22 @@ Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =item $guard = $client->on_send_frame $callback
 
-Invoked when the STOMP frame is sent. Parameters passed to the callback:
+Invoked when a STOMP frame is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=item $guard = $client->on_send $callback
+
+Invoked when a STOMP SEND command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=item $guard = $client->on_ack $callback
+
+Invoked when a STOMP ACK command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=item $guard = $client->on_nack $callback
+
+Invoked when a STOMP NACK command is sent. Parameters passed to the callback:
 C<$self>, C<$frame> (the sent frame as string).
 
 =item $guard = $client->on_read_frame $callback
