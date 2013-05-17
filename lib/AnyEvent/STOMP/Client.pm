@@ -333,6 +333,7 @@ sub send_frame {
     }
 
     $self->event('SEND_FRAME', $frame);
+    $self->event($command, $frame) if ($command =~ m/SEND|ACK|NACK|/);
     $self->{handle}->push_write($frame);
     $self->reset_client_heartbeat_timer;
 }
@@ -518,6 +519,18 @@ sub on_disconnected {
 
 sub on_send_frame {
     return shift->reg_cb('SEND_FRAME', shift);
+}
+
+sub on_send {
+    return shift->reg_cb('SEND', shift);
+}
+
+sub on_ack {
+    return shift->reg_cb('ACK', shift);
+}
+
+sub on_nack {
+    return shift->reg_cb('NACK', shift);
 }
 
 sub on_read_frame {
