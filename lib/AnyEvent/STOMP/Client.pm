@@ -12,10 +12,9 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.11';
+our $VERSION = '0.2';
 
 
-my $TIMEOUT_MARGIN = 1000;
 my $EOL = chr(10);
 my $NULL = chr(0);
 my %ENCODE_MAP = (
@@ -27,73 +26,106 @@ my %ENCODE_MAP = (
 my %DECODE_MAP = reverse %ENCODE_MAP;
 
 
-sub connect {
+sub new {
     my $class = shift;
     my $self = $class->SUPER::new;
 
+    $self->{connection_timeout_margin} = 100;
     $self->{connected} = 0;
     $self->{counter} = 0;
+
     $self->{host} = shift || 'localhost';
     $self->{port} = shift || 61613;
 
-    my $additional_headers = shift || {};
-    my $connect_headers = {
+    my $connect_headers = shift || {};
+
+    $self->{connect_headers} = {
         'accept-version' => '1.2',
         'host' => $self->{host},
         'heart-beat' => '0,0'
     };
 
-    if (defined $additional_headers->{'heart-beat'}) {
-        $connect_headers->{'heart-beat'} = $additional_headers->{'heart-beat'};
+    if (defined $connect_headers->{'virtual-host'}) {
+        $self->{connect_headers}{host} = $connect_headers->{'virtual-host'};
     }
-    $self->{heartbeat}{config}{client} = $connect_headers->{'heart-beat'};
 
-    if (defined $additional_headers->{'login'}
-        and defined $additional_headers->{'passcode'}
+    if (defined $connect_headers->{'heart-beat'}) {
+        $self->{connect_headers}{'heart-beat'} = $connect_headers->{'heart-beat'};
+    }
+
+    if (defined $connect_headers->{'login'}
+        and defined $connect_headers->{'passcode'}
     ) {
-        $connect_headers->{'login'} = $additional_headers->{'login'};
-        $connect_headers->{'passcode'} = $additional_headers->{'passcode'};
+        $self->{connect_headers}{'login'} = $connect_headers->{'login'};
+        $self->{connect_headers}{'passcode'} = $connect_headers->{'passcode'};
     }
 
     my $tls_ctx = shift;
-    my $tls_hash = {};
     if (defined $tls_ctx) {
-        $tls_hash->{tls} = 'connect';
-        $tls_hash->{tls_ctx} = $tls_ctx;
+        $self->{tls_hash}{tls} = 'connect';
+        $self->{tls_hash}{tls_ctx} = $tls_ctx;
     }
+
+    return bless $self, $class;
+}
+
+sub connect {
+    my $self = shift;
+
+    croak "You already have established a connection." if $self->is_connected;
 
     $self->{handle} = AnyEvent::Handle->new(
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
         on_connect => sub {
-            $self->{connect_headers} = $connect_headers;
-            $self->send_frame('CONNECT', $connect_headers);
+            $self->send_frame('CONNECT', $self->{connect_headers});
         },
         on_connect_error => sub {
-            my ($handle, $message) = @_;
-            $handle->destroy;
+            shift->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port});
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         },
         on_error => sub {
-            my ($handle, $code, $message) = @_;
-            $handle->destroy;
+            shift->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port}, $code, $message);
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         },
         on_read => sub {
             $self->read_frame;
         },
-        %$tls_hash,
+        $self->{tls_hash},
     );
-
-    return bless $self, $class;
 }
 
 sub disconnect {
     my $self = shift;
-    $self->send_frame('DISCONNECT', {receipt => $self->get_uuid,}) if $self->is_connected;
-    $self->{connected} = 0;
+    my $ungraceful = shift;
+
+    croak "You cannot disconnect when you are not even connected." unless $self->is_connected;
+
+    if (defined $ungraceful and $ungraceful) {
+        $self->send_frame('DISCONNECT');
+        $self->{connected} = 0;
+        $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+    }
+    else {
+        my $receipt_id = $self->get_uuid;
+        
+        $self->send_frame('DISCONNECT', {receipt => $receipt_id,});
+
+        $self->on_receipt(
+            sub {
+                my ($self, $header) = @_;
+
+                if ($header->{'receipt-id'} == $receipt_id) {
+                    $self->{connected} = 0;
+                    $self->unreg_me;
+                    $self->{handle}->destroy;
+                    $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+                }
+            }
+        );
+    }
 }
 
 sub DESTROY {
@@ -105,12 +137,23 @@ sub is_connected {
     return shift->{connected};
 }
 
+sub set_connection_timeout_margin {
+    my ($self, $new_connection_timeout_margin) = @_;
+
+    if ($new_connection_timeout_margin =~ m/^\d+$/) {
+        $self->{connection_timeout_margin} = $new_connection_timeout_margin;
+    }
+}
+
+sub get_connection_timeout_margin {
+    return shift->{connection_timeout_margin};
+}
+
 sub set_heartbeat_intervals {
     my $self = shift;
-    $self->{heartbeat}{config}{server} = shift;
 
-    my ($cx, $cy) = split ',', $self->{heartbeat}{config}{client};
-    my ($sx, $sy) = split ',', $self->{heartbeat}{config}{server};
+    my ($cx, $cy) = split ',', $self->{connect_headers}{'heart-beat'};
+    my ($sx, $sy) = split ',', shift;
 
     if ($cx == 0 or $sy == 0) {
         $self->{heartbeat}{interval}{client} = 0;
@@ -152,10 +195,10 @@ sub reset_server_heartbeat_timer {
     }
 
     $self->{heartbeat}{timer}{server} = AnyEvent->timer(
-        after => ($interval/1000+$TIMEOUT_MARGIN),
+        after => (($interval+$self->get_connection_timeout_margin)/1000),
         cb => sub {
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port});
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         }
     );
 }
@@ -333,6 +376,7 @@ sub send_frame {
     }
 
     $self->event('SEND_FRAME', $frame);
+    $self->event($command, $frame) if ($command =~ m/SEND|ACK|NACK|/);
     $self->{handle}->push_write($frame);
     $self->reset_client_heartbeat_timer;
 }
@@ -516,8 +560,24 @@ sub on_disconnected {
     return shift->reg_cb('DISCONNECTED', shift);
 }
 
+sub on_connection_lost {
+    return shift->reg_cb('CONNECTION_LOST', shift);
+}
+
 sub on_send_frame {
     return shift->reg_cb('SEND_FRAME', shift);
+}
+
+sub on_send {
+    return shift->reg_cb('SEND', shift);
+}
+
+sub on_ack {
+    return shift->reg_cb('ACK', shift);
+}
+
+sub on_nack {
+    return shift->reg_cb('NACK', shift);
 }
 
 sub on_read_frame {
@@ -573,7 +633,9 @@ AnyEvent and Object::Event.
 
   use AnyEvent::STOMP::Client;
   
-  my $stomp_client = AnyEvent::STOMP::Client->connect();
+  my $stomp_client = new AnyEvent::STOMP::Client()
+    
+  $stomp_client->connect();
 
   $stomp_client->on_connected(
       sub {
@@ -611,10 +673,9 @@ on_message($callback)).
 
 =head1 METHODS
 
-=head2 $client = connect $host, $port, $connect_headers, $tls_context
+=head2 $client = new $host, $port, $connect_headers, $tls_context
 
-Connect to a STOMP-compatible message broker. Returns an instance of
-AnyEvent::STOMP::Client.
+Create an instance of C<AnyEvent::STOMP::Client>.
 
 =over
 
@@ -631,8 +692,8 @@ port where the message broker instance is listening.
 =item C<$connect_headers>
 
 Hash, optional, empty by default. May be used to add arbitrary headers to the
-STOMP CONNECT frame. STOMP login headers would, for example, be supplied using
-this parameter.
+STOMP C<CONNECT> frame. STOMP login headers would, for example, be supplied
+using this parameter.
 
 =item C<$tls_context>
 
@@ -643,16 +704,35 @@ directly to C<AnyEvent::Handle>. See L<AnyEvent::TLS> for documentation.
 
 =head3 Example
 
-C<< my $client = AnyEvent::STOMP::Client->connect(
+C<< my $client = AnyEvent::STOMP::Client->new(
     '127.0.0.1',
     61614,
-    {login => 'guest', passcode => 'guest'}
+    {'login' => 'guest', 'passcode' => 'guest', 'virtual-host' => 'foo'}
 ); >>
+
+=head2 $client = connect 
+
+Connect to the specified  STOMP message broker. Croaks if you already
+established a connection.
 
 =head2 $client->disconnect
 
-Sends a DISCONNECT STOMP frame to the message broker (if we are still
-connected).
+Sends a C<DISCONNECT> STOMP frame to the message broker (if we are still
+connected). Croaks, if you are trying to disconnect without actually being
+connected.
+
+=over
+
+=item C<$ungraceful>
+
+Boolean, defaults to 0. If the ungraceful option is set, then simply a
+C<DISCONNECT> STOMP frame is sent and the connection state is considered to be
+disconnected without awaiting any response from the server.
+If, however, the option is not set, then a receipt is asked for and the
+connection is only considered to be no longer established upon receiving a
+receipt for the C<DISCONNECT> frame.
+
+=back
 
 =head2 bool $client->is_connected
 
@@ -661,7 +741,7 @@ STOMP heart-beats are used.
 
 =head2 $subscription_id = $client->subscribe $destination, $ack_mode, $additional_headers
 
-Subscribe to a destination by sending a SUBSCRIBE STOMP frame to the message
+Subscribe to a destination by sending a C<SUBSCRIBE> STOMP frame to the message
 broker. Returns the subscription identifier.
 
 =over
@@ -677,14 +757,14 @@ See the STOMP documentation for further information on acknowledgement modes.
 
 =item C<$additional_headers>
 
-Used to pass arbitrary headers to the SUBSCRIBE STOMP frame. Broker specific
+Used to pass arbitrary headers to the C<SUBSCRIBE> STOMP frame. Broker specific
 flow control parameters for example is what would want to supply here.
 
 =back
 
 =head2 $client->unsubscribe $destination, $additional_headers
 
-Unsubscribe from a destination by sending an UNSUBSCRIBE STOMP frame to the
+Unsubscribe from a destination by sending an C<UNSUBSCRIBE> STOMP frame to the
 message broker.
 
 =over
@@ -695,13 +775,13 @@ String, mandatory. The destination from which we want to unsubscribe.
 
 =item C<$additional_headers>
 
-Used to pass arbitrary headers to the SUBSCRIBE STOMP frame.
+Used to pass arbitrary headers to the C<UNSUBSCRIBE> STOMP frame.
 
 =back
 
 =head2 $client->send $destination, $headers, $body
 
-Send a STOMP MESSAGE to the message broker.
+Send a STOMP C<SEND> frame to the message broker.
 
 =over
 
@@ -711,7 +791,7 @@ String, mandatory. The destination to which to send the message to.
 
 =item C<$header>
 
-Hash, optional, empty by default. Arbitrary headers included in the MESSAGE
+Hash, optional, empty by default. Arbitrary headers included in the C<SEND>
 frame. See the STOMP documentation for supported headers.
 
 =item C<$body>
@@ -723,35 +803,35 @@ content-type specified in the header.
 
 =head2 $client->ack $ack_id, $transaction_id
 
-Send an ACK frame to acknowledge a received message.
+Send an C<ACK> frame to acknowledge a received message.
 
 =over
 
 =item C<$ack_id>
 
-String, mandatory. Has to match the 'ack' header of the message that is to be
+String, mandatory. Has to match the C<ack> header of the message that is to be
 acknowledged.
 
 =item C<$transaction_id>
 
-String, optional. A transaction identifier, if the ACK is part of a transaction.
+String, optional. A transaction identifier, if the C<ACK> is part of a transaction.
 
 =back
 
 =head2 $client->nack $ack_id, $transaction_id
 
-Send an NACK frame to NOT acknowledge a received message.
+Send an C<NACK> frame to NOT acknowledge a received message.
 
 =over
 
 =item C<$ack_id>
 
-String, mandatory. Has to match the 'ack' header of the message that is to be
+String, mandatory. Has to match the C<ack> header of the message that is to be
 nacked.
 
 =item C<$transaction_id>
 
-String, optional. A transaction identifier, if the NACK is part of a
+String, optional. A transaction identifier, if the C<NACK> is part of a
 transaction.
 
 =back
@@ -812,14 +892,12 @@ frame.
 In order for the C<AnyEvent::STOMP::Client> to be useful, callback subroutines
 can be registered for the following events:
 
-=over
-
-=item $guard = $client->on_connected $callback
+=head3 $guard = $client->on_connected $callback
 
 Invoked when a CONNECTED frame is received. Parameters passed to the callback:
 C<$self>, C<$header_hashref>.
 
-=item $guard = $client->on_disconnected $callback
+=head3 $guard = $client->on_disconnected $callback
 
 Invoked after having successfully disconnected from a broker. I.e. when a
 callback is registered for this event and the C<disconnect> subroutine is
@@ -827,45 +905,65 @@ called, then a receipt header is included in the DISCONNECT frame and the
 disconnected event is fired upon receiving the receipt for the DISCONNECT frame.
 Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
-=item $guard = $client->on_send_frame $callback
+=head3 $guard = $client->on_connection_lost $callback
 
-Invoked when the STOMP frame is sent. Parameters passed to the callback:
+Invoked when either the C<on_error> or the C<on_connect_error> callback
+specified in the C<AnyEvent::Handle> constructor are called, or when no more
+heartbeats arrive from the server.
+Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
+
+=head3 $guard = $client->on_send_frame $callback
+
+Invoked when a STOMP frame is sent. Parameters passed to the callback:
 C<$self>, C<$frame> (the sent frame as string).
 
-=item $guard = $client->on_read_frame $callback
+=head3 $guard = $client->on_send $callback
+
+Invoked when a STOMP SEND command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=head3 $guard = $client->on_ack $callback
+
+Invoked when a STOMP ACK command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=head3 $guard = $client->on_nack $callback
+
+Invoked when a STOMP NACK command is sent. Parameters passed to the callback:
+C<$self>, C<$frame> (the sent frame as string).
+
+=head3 $guard = $client->on_read_frame $callback
 
 Invoked when a STOMP frame is received (irrespective of the STOMP command).
 Parameters passed to the callback: C<$self>, C<$command>, C<$header_hashref>,
 C<$body> (may be C<undef>, if the frame is not specified to contain a body).
 
-=item $guard = $client->on_message $callback
+=head3 $guard = $client->on_message $callback
 
 Invoked when a MESSAGE frame is received. Parameters passed to the callback:
 C<$self>, C<$header_hashref>, C<$body>.
 
-=item $guard = $client->on_receipt $callback
+=head3 $guard = $client->on_receipt $callback
 
 Invoked when a RECEIPT frame is received. Parameters passed to the callback:
 C<$self>, C<$header_hashref>.
 
-=item $guard = $client->on_error $callback
+=head3 $guard = $client->on_error $callback
 
 Invoked when an ERROR frame is received. Parameters passed to the callback:
 C<$self>, C<$header_hashref>, C<$body>.
 
-=item $guard = $client->on_subscribed $callback
+=head3 $guard = $client->on_subscribed $callback
 
 Invoked after having successfully subscribed to a destination. Works behind the
 scenes like the C<on_disconnected> described above. Parameters passed to the
 callback: C<$self>, C<$destination>.
 
-=item $guard = $client->on_unsubscribed $callback
+=head3 $guard = $client->on_unsubscribed $callback
 
 Invoked after having successfully unsubscribed to a destination. Works behind
 the scenes like the C<on_disconnected> described above. Parameters passed to the
 callback: C<$self>, C<$destination>.
-
-=back
 
 =head3 $client->unregister_callback $guard
 
