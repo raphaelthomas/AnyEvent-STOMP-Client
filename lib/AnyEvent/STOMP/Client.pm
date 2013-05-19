@@ -26,74 +26,109 @@ my %ENCODE_MAP = (
 my %DECODE_MAP = reverse %ENCODE_MAP;
 
 
-sub connect {
+sub new {
     my $class = shift;
     my $self = $class->SUPER::new;
 
     $self->{connection_timeout_margin} = 100;
     $self->{connected} = 0;
     $self->{counter} = 0;
+
     $self->{host} = shift || 'localhost';
     $self->{port} = shift || 61613;
 
-    my $additional_headers = shift || {};
-    my $connect_headers = {
+    my $connect_headers = shift || {};
+
+    $self->{connect_headers} = {
         'accept-version' => '1.2',
         'host' => $self->{host},
         'heart-beat' => '0,0'
     };
 
-    if (defined $additional_headers->{'heart-beat'}) {
-        $connect_headers->{'heart-beat'} = $additional_headers->{'heart-beat'};
+    if (defined $connect_headers->{'virtual-host'}) {
+        $self->{connect_headers}{host} = $connect_headers->{'virtual-host'};
     }
-    $self->{heartbeat}{config}{client} = $connect_headers->{'heart-beat'};
 
-    if (defined $additional_headers->{'login'}
-        and defined $additional_headers->{'passcode'}
+    if (defined $connect_headers->{'heart-beat'}) {
+        $self->{connect_headers}{'heart-beat'} = $connect_headers->{'heart-beat'};
+    }
+
+    if (defined $connect_headers->{'login'}
+        and defined $connect_headers->{'passcode'}
     ) {
-        $connect_headers->{'login'} = $additional_headers->{'login'};
-        $connect_headers->{'passcode'} = $additional_headers->{'passcode'};
+        $self->{connect_headers}{'login'} = $connect_headers->{'login'};
+        $self->{connect_headers}{'passcode'} = $connect_headers->{'passcode'};
     }
 
     my $tls_ctx = shift;
-    my $tls_hash = {};
     if (defined $tls_ctx) {
-        $tls_hash->{tls} = 'connect';
-        $tls_hash->{tls_ctx} = $tls_ctx;
+        $self->{tls_hash}{tls} = 'connect';
+        $self->{tls_hash}{tls_ctx} = $tls_ctx;
     }
+
+    return bless $self, $class;
+}
+
+sub connect {
+    my $self = shift;
+
+    croak "You already have established a connection." if $self->is_connected;
 
     $self->{handle} = AnyEvent::Handle->new(
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
         on_connect => sub {
-            $self->{connect_headers} = $connect_headers;
-            $self->send_frame('CONNECT', $connect_headers);
+            $self->send_frame('CONNECT', $self->{connect_headers});
         },
         on_connect_error => sub {
-            my ($handle, $message) = @_;
-            $handle->destroy;
+            shift->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port});
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         },
         on_error => sub {
-            my ($handle, $code, $message) = @_;
-            $handle->destroy;
+            shift->destroy;
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port}, $code, $message);
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         },
         on_read => sub {
             $self->read_frame;
         },
-        %$tls_hash,
+        $self->{tls_hash},
     );
-
-    return bless $self, $class;
 }
 
 sub disconnect {
     my $self = shift;
-    $self->send_frame('DISCONNECT', {receipt => $self->get_uuid,}) if $self->is_connected;
-    $self->{connected} = 0;
+    my $ungraceful = shift;
+
+    if ($self->is_connected) {
+        if (defined $ungraceful and $ungraceful) {
+            $self->send_frame('DISCONNECT');
+            $self->{connected} = 0;
+            $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+        }
+        else {
+            my $receipt_id = $self->get_uuid;
+            
+            $self->send_frame('DISCONNECT', {receipt => $receipt_id,});
+
+            $self->on_receipt(
+                sub {
+                    my ($self, $header) = @_;
+
+                    if ($header->{'receipt-id'} == $receipt_id) {
+                        $self->{connected} = 0;
+                        $self->unreg_me;
+                        $self->{handle}->destroy;
+                        $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+                    }
+                }
+            );
+        }
+    }
+    else {
+        $self->event('DISCONNECTED', $self->{host}, $self->{port});
+    }
 }
 
 sub DESTROY {
@@ -119,10 +154,9 @@ sub get_connection_timeout_margin {
 
 sub set_heartbeat_intervals {
     my $self = shift;
-    $self->{heartbeat}{config}{server} = shift;
 
-    my ($cx, $cy) = split ',', $self->{heartbeat}{config}{client};
-    my ($sx, $sy) = split ',', $self->{heartbeat}{config}{server};
+    my ($cx, $cy) = split ',', $self->{connect_headers}{'heart-beat'};
+    my ($sx, $sy) = split ',', shift;
 
     if ($cx == 0 or $sy == 0) {
         $self->{heartbeat}{interval}{client} = 0;
@@ -167,7 +201,7 @@ sub reset_server_heartbeat_timer {
         after => (($interval+$self->get_connection_timeout_margin)/1000),
         cb => sub {
             $self->{connected} = 0;
-            $self->event('DISCONNECTED', $self->{host}, $self->{port});
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         }
     );
 }
@@ -527,6 +561,10 @@ sub on_connected {
 
 sub on_disconnected {
     return shift->reg_cb('DISCONNECTED', shift);
+}
+
+sub on_connection_lost {
+    return shift->reg_cb('CONNECTION_LOST', shift);
 }
 
 sub on_send_frame {
