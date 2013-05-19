@@ -12,7 +12,8 @@ use AnyEvent::STOMP::Client;
 
 
 my $cv = AnyEvent->condvar;
-my $stomp_client = AnyEvent::STOMP::Client->connect();
+my $stomp_client = new AnyEvent::STOMP::Client()
+$stomp_client->connect();
 
 $stomp_client->on_connected(
     sub {
