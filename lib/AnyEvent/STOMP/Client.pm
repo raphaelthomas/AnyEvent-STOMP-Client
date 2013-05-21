@@ -83,12 +83,12 @@ sub connect {
         on_connect_error => sub {
             shift->destroy;
             $self->{connected} = 0;
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
+            $self->event('CONNECT_ERROR', $self->{host}, $self->{port});
         },
         on_error => sub {
             shift->destroy;
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}) if $self->{connected};
             $self->{connected} = 0;
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         },
         on_read => sub {
             $self->read_frame;
@@ -562,6 +562,10 @@ sub on_disconnected {
 
 sub on_connection_lost {
     return shift->reg_cb('CONNECTION_LOST', shift);
+}
+
+sub on_connect_error {
+    return shift->reg_cb('CONNECT_ERROR', shift);
 }
 
 sub on_send_frame {
