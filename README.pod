@@ -281,9 +281,15 @@ Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =head3 $guard = $client->on_connection_lost $callback
 
-Invoked when either the C<on_error> or the C<on_connect_error> callback
-specified in the C<AnyEvent::Handle> constructor are called, or when no more
+Invoked when either the C<on_error> callback specified in the
+C<AnyEvent::Handle> constructor is called, or when no more
 heartbeats arrive from the server.
+Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
+
+=head3 $guard = $client->on_connect_error $callback
+
+Invoked when the C<on_connect_error> callback specified in the
+C<AnyEvent::Handle> constructor is called.
 Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =head3 $guard = $client->on_send_frame $callback

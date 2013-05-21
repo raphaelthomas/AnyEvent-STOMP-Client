@@ -83,12 +83,12 @@ sub connect {
         on_connect_error => sub {
             shift->destroy;
             $self->{connected} = 0;
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
+            $self->event('CONNECT_ERROR', $self->{host}, $self->{port});
         },
         on_error => sub {
             shift->destroy;
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}) if $self->{connected};
             $self->{connected} = 0;
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
         },
         on_read => sub {
             $self->read_frame;
@@ -564,6 +564,10 @@ sub on_connection_lost {
     return shift->reg_cb('CONNECTION_LOST', shift);
 }
 
+sub on_connect_error {
+    return shift->reg_cb('CONNECT_ERROR', shift);
+}
+
 sub on_send_frame {
     return shift->reg_cb('SEND_FRAME', shift);
 }
@@ -907,9 +911,15 @@ Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =head3 $guard = $client->on_connection_lost $callback
 
-Invoked when either the C<on_error> or the C<on_connect_error> callback
-specified in the C<AnyEvent::Handle> constructor are called, or when no more
+Invoked when either the C<on_error> callback specified in the
+C<AnyEvent::Handle> constructor is called, or when no more
 heartbeats arrive from the server.
+Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
+
+=head3 $guard = $client->on_connect_error $callback
+
+Invoked when the C<on_connect_error> callback specified in the
+C<AnyEvent::Handle> constructor is called.
 Parameters passed to the callback: C<$self>, C<$host>, C<$port>.
 
 =head3 $guard = $client->on_send_frame $callback
