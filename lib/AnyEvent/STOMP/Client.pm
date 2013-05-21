@@ -197,8 +197,10 @@ sub reset_server_heartbeat_timer {
     $self->{heartbeat}{timer}{server} = AnyEvent->timer(
         after => (($interval+$self->get_connection_timeout_margin)/1000),
         cb => sub {
-            $self->{connected} = 0;
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
+            if ($self->{connected}) {
+                $self->{connected} = 0;
+                $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
+            }
         }
     );
 }
