@@ -74,6 +74,8 @@ sub connect {
 
     croak "You already have established a connection." if $self->is_connected;
 
+    $self->{subscriptions} = {};
+
     $self->{handle} = AnyEvent::Handle->new(
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
