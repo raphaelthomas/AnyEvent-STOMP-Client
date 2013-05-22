@@ -30,7 +30,7 @@ sub new {
     my $class = shift;
     my $self = $class->SUPER::new;
 
-    $self->{connection_timeout_margin} = 100;
+    $self->{connection_timeout_margin} = 250;
     $self->{connected} = 0;
     $self->{counter} = 0;
 
