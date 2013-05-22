@@ -1,5 +1,9 @@
 Revision history for AnyEvent::STOMP::Client.
 
+0.21  Wed May 22, 2013
+    - New callback on_connect_error.
+    - Various bugfixes.
+
 0.2   Mon May 20, 2013
     - New callbacks on_send, on_ack, on_nack, on_connection_lost.
     - Get/set subroutine for connection timeout margin added.
