@@ -12,7 +12,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 
 
 my $EOL = chr(10);

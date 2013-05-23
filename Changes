@@ -1,5 +1,8 @@
 Revision history for AnyEvent::STOMP::Client.
 
+0.22  Thu May 23, 2013
+    - Hotfix in connect subroutine to allow SSL/TLS connections.
+
 0.21  Wed May 22, 2013
     - New callback on_connect_error.
     - Various bugfixes.
