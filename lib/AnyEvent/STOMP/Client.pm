@@ -95,7 +95,7 @@ sub connect {
         on_read => sub {
             $self->read_frame;
         },
-        $self->{tls_hash},
+        %{$self->{tls_hash}},
     );
 }
 
