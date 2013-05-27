@@ -132,7 +132,7 @@ sub disconnect {
 
 sub DESTROY {
     my $self = shift;
-    $self->disconnect;
+    $self->disconnect if $self->is_connected;
 }
 
 sub is_connected {
