@@ -596,11 +596,12 @@ sub on_message {
     my ($self, $cb, $destination) = @_;
 
     if (defined $destination) {
-        croak "Would you mind supplying me with a destination?";
-    }
-
-    if (defined $destination and defined $self->{subscriptions}{$destination}) {
-        return $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
+        if (defined $self->{subscriptions}{$destination}) {
+            return $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
+        }
+        else {
+            croak "Would you mind supplying me with a destination you have subscribed to?";
+        }
     }
     else {
         return $self->reg_cb('MESSAGE', $cb);
