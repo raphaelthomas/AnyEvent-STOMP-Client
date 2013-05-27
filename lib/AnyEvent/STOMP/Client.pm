@@ -596,12 +596,12 @@ sub on_message {
     my ($self, $cb, $destination) = @_;
 
     if (defined $destination) {
-        if (defined $self->{subscriptions}{$destination}) {
-            return $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
+        unless (defined $self->{subscriptions}{$destination}) {
+            carp "You haven't subscribed to '"
+                .$self->{subscriptions}{$destination}."' yet. This callback may never be called.";
         }
-        else {
-            croak "Would you mind supplying me with a destination you have subscribed to?";
-        }
+
+        return $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
     }
     else {
         return $self->reg_cb('MESSAGE', $cb);
