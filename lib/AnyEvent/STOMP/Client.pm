@@ -209,7 +209,7 @@ sub reset_server_heartbeat_timer {
 
 sub get_uuid {
     my $self = shift;
-    return time.$self->{counter}++;
+    return int(time).$self->{counter}++;
 }
 
 sub subscribe {
