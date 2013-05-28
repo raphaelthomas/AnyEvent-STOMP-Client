@@ -318,10 +318,12 @@ Invoked when a STOMP frame is received (irrespective of the STOMP command).
 Parameters passed to the callback: C<$self>, C<$command>, C<$header_hashref>,
 C<$body> (may be C<undef>, if the frame is not specified to contain a body).
 
-=head3 $guard = $client->on_message $callback
+=head3 $guard = $client->on_message $callback $destination
 
-Invoked when a MESSAGE frame is received. Parameters passed to the callback:
-C<$self>, C<$header_hashref>, C<$body>.
+Invoked when a MESSAGE frame is received. Optionally, a C<$destination>
+parameter may be specified, resulting in the callback only being invoked,
+when a MESSAGE is received from that specific destination.
+Parameters passed to the callback: C<$self>, C<$header_hashref>, C<$body>.
 
 =head3 $guard = $client->on_receipt $callback
 

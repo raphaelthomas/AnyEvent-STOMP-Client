@@ -5,11 +5,8 @@
 #
 ################################################################################
 
-use lib '../lib';
-
 use AnyEvent;
 use AnyEvent::STOMP::Client;
-
 
 my $cv = AnyEvent->condvar;
 my $stomp_client = new AnyEvent::STOMP::Client();

@@ -5,7 +5,6 @@
 #
 ################################################################################
 
-use lib '../lib';
 use AnyEvent::STOMP::Client;
 
 my $stomp_client = new AnyEvent::STOMP::Client();

@@ -12,7 +12,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.22';
+our $VERSION = '0.23';
 
 
 my $EOL = chr(10);
@@ -132,7 +132,7 @@ sub disconnect {
 
 sub DESTROY {
     my $self = shift;
-    $self->disconnect;
+    $self->disconnect if $self->is_connected;
 }
 
 sub is_connected {
@@ -209,7 +209,7 @@ sub reset_server_heartbeat_timer {
 
 sub get_uuid {
     my $self = shift;
-    return time.$self->{counter}++;
+    return int(time).$self->{counter}++;
 }
 
 sub subscribe {
@@ -596,10 +596,11 @@ sub on_message {
     my ($self, $cb, $destination) = @_;
 
     if (defined $destination) {
-        croak "Would you mind supplying me with a destination?";
-    }
+        unless (defined $self->{subscriptions}{$destination}) {
+            carp "You haven't subscribed to '"
+                .$self->{subscriptions}{$destination}."' yet. This callback may never be called.";
+        }
 
-    if (defined $destination and defined $self->{subscriptions}{$destination}) {
         return $self->reg_cb('MESSAGE-'.$self->{subscriptions}{$destination}, $cb);
     }
     else {
@@ -952,10 +953,12 @@ Invoked when a STOMP frame is received (irrespective of the STOMP command).
 Parameters passed to the callback: C<$self>, C<$command>, C<$header_hashref>,
 C<$body> (may be C<undef>, if the frame is not specified to contain a body).
 
-=head3 $guard = $client->on_message $callback
+=head3 $guard = $client->on_message $callback $destination
 
-Invoked when a MESSAGE frame is received. Parameters passed to the callback:
-C<$self>, C<$header_hashref>, C<$body>.
+Invoked when a MESSAGE frame is received. Optionally, a C<$destination>
+parameter may be specified, resulting in the callback only being invoked,
+when a MESSAGE is received from that specific destination.
+Parameters passed to the callback: C<$self>, C<$header_hashref>, C<$body>.
 
 =head3 $guard = $client->on_receipt $callback
 
