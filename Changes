@@ -1,5 +1,9 @@
 Revision history for AnyEvent::STOMP::Client.
 
+0.23  Tue May 28, 2013
+    - Bug and documentation fix for on_message subroutine.
+    - Various other bugfixes.
+
 0.22  Thu May 23, 2013
     - Hotfix in connect subroutine to allow SSL/TLS connections.
 
