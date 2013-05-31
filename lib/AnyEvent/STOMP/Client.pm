@@ -1,6 +1,5 @@
 package AnyEvent::STOMP::Client;
 
-
 use strict;
 use warnings;
 
@@ -12,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 
 
 my $EOL = chr(10);
@@ -115,12 +114,13 @@ sub disconnect {
         
         $self->send_frame('DISCONNECT', {receipt => $receipt_id,});
 
-        $self->on_receipt(
+        $self->before_receipt(
             sub {
                 my ($self, $header) = @_;
 
-                if ($header->{'receipt-id'} == $receipt_id) {
+                if ($header->{'receipt-id'} eq $receipt_id) {
                     $self->{connected} = 0;
+                    $self->stop_event;
                     $self->unreg_me;
                     $self->{handle}->destroy;
                     $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
@@ -249,11 +249,12 @@ sub subscribe {
                 $header->{receipt} = $self->get_uuid;
             }
 
-            $self->on_receipt(
+            $self->before_receipt(
                 sub {
                     my ($self, $receipt_header) = @_;
-                    if ($receipt_header->{'receipt-id'} == $header->{receipt}) {
+                    if ($receipt_header->{'receipt-id'} eq $header->{receipt}) {
                         $self->event('SUBSCRIBED', $header->{destination});
+                        $self->stop_event;
                         $self->unreg_me;
                     }
                 }
@@ -286,11 +287,12 @@ sub unsubscribe {
     if ($self->handles('UNSUBSCRIBED')) {
         $header->{receipt} = $self->get_uuid unless defined $header->{receipt};
 
-        $self->on_receipt(
+        $self->before_receipt(
             sub {
                 my ($self, $receipt_header) = @_;
-                if ($receipt_header->{'receipt-id'} == $header->{receipt}) {
+                if ($receipt_header->{'receipt-id'} eq $header->{receipt}) {
                     $self->event('UNSUBSCRIBED', $destination);
+                    $self->stop_event;
                     $self->unreg_me;
                 }
             }
@@ -606,6 +608,10 @@ sub on_message {
     else {
         return $self->reg_cb('MESSAGE', $cb);
     }
+}
+
+sub before_receipt {
+    return shift->reg_cb('before_RECEIPT', shift);
 }
 
 sub on_receipt {
