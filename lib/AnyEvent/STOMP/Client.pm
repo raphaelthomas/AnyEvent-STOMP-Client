@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.25';
+our $VERSION = '0.25a';
 
 
 my $EOL = chr(10);
@@ -442,8 +442,11 @@ sub nack {
 
 sub send_heartbeat {
     my $self = shift;
-    $self->{handle}->push_write($EOL);
-    $self->reset_client_heartbeat_timer;
+
+    if ($self->is_connected) {
+        $self->{handle}->push_write($EOL);
+        $self->reset_client_heartbeat_timer;
+    }
 }
 
 sub begin_transaction {
