@@ -83,11 +83,13 @@ sub connect {
         },
         on_connect_error => sub {
             shift->destroy;
+            undef $self->{handle};
             $self->{connected} = 0;
             $self->event('CONNECT_ERROR', $self->{host}, $self->{port});
         },
         on_error => sub {
             shift->destroy;
+            undef $self->{handle};
             $self->event('CONNECTION_LOST', $self->{host}, $self->{port}) if $self->{connected};
             $self->{connected} = 0;
         },
@@ -102,7 +104,10 @@ sub disconnect {
     my $self = shift;
     my $ungraceful = shift;
 
-    croak "You cannot disconnect when you are not even connected." unless $self->is_connected;
+    unless ($self->is_connected) {
+        $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+        return;
+    }
 
     if (defined $ungraceful and $ungraceful) {
         $self->send_frame('DISCONNECT');
@@ -132,11 +137,12 @@ sub disconnect {
 
 sub DESTROY {
     my $self = shift;
-    $self->disconnect if $self->is_connected;
+    $self->disconnect(1) if $self->is_connected;
 }
 
 sub is_connected {
-    return shift->{connected};
+    my $self = shift;
+    return defined $self->{handle} && $self->{connected};
 }
 
 sub set_connection_timeout_margin {
