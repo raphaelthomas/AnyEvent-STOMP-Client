@@ -1,5 +1,8 @@
 Revision history for AnyEvent::STOMP::Client.
 
+0.25  Fri Aug 16, 2013
+    - Various bugfixes in connection handling.
+
 0.24  Fri May 31, 2013
     - Fixed internal event handling and prevent outwards propagation.
 
