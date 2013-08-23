@@ -107,7 +107,10 @@ sub disconnect {
     my $ungraceful = shift;
 
     unless ($self->is_connected) {
-        $self->{handle}->push_shutdown if (defined $self->{handle});
+        if (defined $self->{handle}) {
+            $self->{handle}->push_shutdown;
+            $self->{handle}->destroy;
+        }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
         return;
     }
@@ -115,8 +118,10 @@ sub disconnect {
     if (defined $ungraceful and $ungraceful) {
         $self->send_frame('DISCONNECT');
         $self->{connected} = 0;
-        $self->{handle}->push_shutdown if (defined $self->{handle});
-        $self->{handle}->destroy;
+        if (defined $self->{handle}) {
+            $self->{handle}->push_shutdown;
+            $self->{handle}->destroy;
+        }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
     }
     else {
@@ -132,8 +137,10 @@ sub disconnect {
                     $self->{connected} = 0;
                     $self->stop_event;
                     $self->unreg_me;
-                    $self->{handle}->push_shutdown if (defined $self->{handle});
-                    $self->{handle}->destroy;
+                    if (defined $self->{handle}) {
+                        $self->{handle}->push_shutdown;
+                        $self->{handle}->destroy;
+                    }
                     $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
                 }
             }
@@ -212,10 +219,12 @@ sub reset_server_heartbeat_timer {
         after => (($interval+$self->get_connection_timeout_margin)/1000),
         cb => sub {
             if ($self->{connected}) {
-                $self->disconnect;
                 $self->{connected} = 0;
+                if (defined $self->{handle}) {
+                    $self->{handle}->push_shutdown;
+                    $self->{handle}->destroy;
+                }
                 $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, 'Missed server heartbeat');
-                $self->{handle}->push_shutdown if (defined $self->{handle});
             }
         }
     );
