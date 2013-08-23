@@ -85,12 +85,12 @@ sub connect {
             shift->destroy;
             undef $self->{handle};
             $self->{connected} = 0;
-            $self->event('CONNECT_ERROR', $self->{host}, $self->{port});
+            $self->event('CONNECT_ERROR', $self->{host}, $self->{port}, $!);
         },
         on_error => sub {
             shift->destroy;
             undef $self->{handle};
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}) if $self->{connected};
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, $!) if $self->{connected};
             $self->{connected} = 0;
         },
         on_read => sub {
@@ -207,7 +207,7 @@ sub reset_server_heartbeat_timer {
         cb => sub {
             if ($self->{connected}) {
                 $self->{connected} = 0;
-                $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
+                $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, 'Missed server heartbeat.');
             }
         }
     );
