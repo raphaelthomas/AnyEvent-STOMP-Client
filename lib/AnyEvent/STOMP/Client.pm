@@ -92,8 +92,8 @@ sub connect {
         on_error => sub {
             shift->destroy;
             undef $self->{handle};
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, $!) if $self->{connected};
             $self->{connected} = 0;
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, $!);
         },
         on_read => sub {
             $self->read_frame;
@@ -107,6 +107,7 @@ sub disconnect {
     my $ungraceful = shift;
 
     unless ($self->is_connected) {
+        $self->{handle}->push_shutdown if (defined $self->{handle});
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
         return;
     }
@@ -114,6 +115,7 @@ sub disconnect {
     if (defined $ungraceful and $ungraceful) {
         $self->send_frame('DISCONNECT');
         $self->{connected} = 0;
+        $self->{handle}->push_shutdown if (defined $self->{handle});
         $self->{handle}->destroy;
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
     }
@@ -130,6 +132,7 @@ sub disconnect {
                     $self->{connected} = 0;
                     $self->stop_event;
                     $self->unreg_me;
+                    $self->{handle}->push_shutdown if (defined $self->{handle});
                     $self->{handle}->destroy;
                     $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
                 }
@@ -212,7 +215,7 @@ sub reset_server_heartbeat_timer {
                 $self->disconnect;
                 $self->{connected} = 0;
                 $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, 'Missed server heartbeat');
-                $self->{handle}->push_shutdown;
+                $self->{handle}->push_shutdown if (defined $self->{handle});
             }
         }
     );
