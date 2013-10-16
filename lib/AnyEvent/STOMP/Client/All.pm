@@ -32,6 +32,10 @@ sub new {
 sub setup_stomp_clients {
     my $self = shift;
 
+    if (ref($self->{config}{broker}) ne 'ARRAY') {
+        $self->{config}{broker} = [$self->{config}{broker}];
+    }
+
     foreach (@{$self->{config}{broker}}) {
         my $host = $_->{host};
         my $port = $_->{port};
@@ -61,7 +65,6 @@ sub setup_stomp_clients {
 
         $self->{stomp_clients}{$id}->on_connected(
             sub {
-                print "$id\n";
                 $self->reset_backoff($id);
             }
         );
