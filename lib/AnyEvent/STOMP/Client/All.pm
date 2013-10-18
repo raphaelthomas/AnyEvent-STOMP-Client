@@ -56,7 +56,6 @@ sub setup_stomp_clients {
             $config->{connect_headers}{keys %{$_->{connect_headers}}} = values %{$_->{connect_headers}};
         }
 
-
         $self->{stomp_clients}{$id} = new AnyEvent::STOMP::Client(
             $host, $port,
             $config->{connect_headers},
