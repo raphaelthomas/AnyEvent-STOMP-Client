@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.25a';
+our $VERSION = '0.3';
 
 
 my $EOL = chr(10);
