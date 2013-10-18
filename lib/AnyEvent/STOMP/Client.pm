@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.25a';
+our $VERSION = '0.3';
 
 
 my $EOL = chr(10);
@@ -78,20 +78,22 @@ sub connect {
     $self->{handle} = AnyEvent::Handle->new(
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
+        no_delay => 1,
         on_connect => sub {
+            $self->event('TRANSPORT_CONNECTED', $self->{host}, $self->{port});
             $self->send_frame('CONNECT', $self->{connect_headers});
         },
         on_connect_error => sub {
             shift->destroy;
             undef $self->{handle};
             $self->{connected} = 0;
-            $self->event('CONNECT_ERROR', $self->{host}, $self->{port});
+            $self->event('TRANSPORT_CONNECT_ERROR', $self->{host}, $self->{port}, $!);
         },
         on_error => sub {
             shift->destroy;
             undef $self->{handle};
-            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}) if $self->{connected};
             $self->{connected} = 0;
+            $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, $!);
         },
         on_read => sub {
             $self->read_frame;
@@ -105,6 +107,10 @@ sub disconnect {
     my $ungraceful = shift;
 
     unless ($self->is_connected) {
+        if (defined $self->{handle}) {
+            $self->{handle}->push_shutdown;
+            $self->{handle}->destroy;
+        }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
         return;
     }
@@ -112,6 +118,10 @@ sub disconnect {
     if (defined $ungraceful and $ungraceful) {
         $self->send_frame('DISCONNECT');
         $self->{connected} = 0;
+        if (defined $self->{handle}) {
+            $self->{handle}->push_shutdown;
+            $self->{handle}->destroy;
+        }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
     }
     else {
@@ -127,7 +137,10 @@ sub disconnect {
                     $self->{connected} = 0;
                     $self->stop_event;
                     $self->unreg_me;
-                    $self->{handle}->destroy;
+                    if (defined $self->{handle}) {
+                        $self->{handle}->push_shutdown;
+                        $self->{handle}->destroy;
+                    }
                     $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
                 }
             }
@@ -207,7 +220,11 @@ sub reset_server_heartbeat_timer {
         cb => sub {
             if ($self->{connected}) {
                 $self->{connected} = 0;
-                $self->event('CONNECTION_LOST', $self->{host}, $self->{port});
+                if (defined $self->{handle}) {
+                    $self->{handle}->push_shutdown;
+                    $self->{handle}->destroy;
+                }
+                $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, 'Missed server heartbeat');
             }
         }
     );
@@ -567,6 +584,10 @@ sub read_frame {
     );
 }
 
+sub on_transport_connected {
+    return shift->reg_cb('TRANSPORT_CONNECTED', shift);
+}
+
 sub on_connected {
     return shift->reg_cb('CONNECTED', shift);
 }
@@ -580,7 +601,7 @@ sub on_connection_lost {
 }
 
 sub on_connect_error {
-    return shift->reg_cb('CONNECT_ERROR', shift);
+    return shift->reg_cb('TRANSPORT_CONNECT_ERROR', shift);
 }
 
 sub on_send_frame {
