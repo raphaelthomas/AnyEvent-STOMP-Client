@@ -1,5 +1,9 @@
 Revision history for AnyEvent::STOMP::Client.
 
+0.31  Thu Oct 24, 2013
+      - Bugfixes and safety improvements.
+      - Added debug log messages.
+
 0.3   Fri Oct 18, 2013
       - Integrated AnyEvent::STOMP::Client::All.
       - Integrated AnyEvent::STOMP::Client::Any.
