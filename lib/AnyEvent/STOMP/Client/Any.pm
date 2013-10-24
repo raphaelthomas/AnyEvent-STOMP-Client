@@ -6,7 +6,8 @@ use warnings;
 use parent 'Object::Event';
 
 use AnyEvent::STOMP::Client;
-use Log::Any qw($log);
+use Log::Any '$log';
+use Time::HiRes 'time';
 
 
 my $SEPARATOR_ID_ACK = '#';
@@ -62,7 +63,7 @@ sub setup_stomp_clients {
             sub {
                 my (undef, $header) = @_;
 
-                $log->debug("Connected to $id");
+                $log->debug("$id STOMP connection established.");
 
                 $self->{current_stomp_client} = $self->{stomp_clients}{$id};
                 $self->reset_backoff;
@@ -74,7 +75,7 @@ sub setup_stomp_clients {
 
         $self->{stomp_clients}{$id}->on_transport_connected(
             sub {
-
+                $log->debug("$id TCP/TLS connection established.");
             }
         );
 
@@ -89,6 +90,7 @@ sub setup_stomp_clients {
             sub {
                 my (undef, $header, undef) = @_;
 
+                $log->debug("$id STOMP ERROR received: '$header->{message}'.");
                 delete $self->{connect_timeout_timer};
                 $self->set_client_unavailable($id);
                 $self->backoff;
@@ -104,8 +106,10 @@ sub setup_stomp_clients {
         $self->{stomp_clients}{$id}->on_connection_lost(
             sub {
                 my (undef, undef, undef, $reason) = @_;
-                $self->event('ANY_CONNECTION_LOST', $id);
+
+                $log->debug("$id Connection lost ($reason).");
                 $self->set_client_unavailable($id);
+                $self->event('ANY_CONNECTION_LOST', $id);
                 $self->backoff;
             }
         );
@@ -113,6 +117,7 @@ sub setup_stomp_clients {
         $self->{stomp_clients}{$id}->on_connect_error(
             sub {
                 my (undef, undef, undef, $reason) = @_;
+                $log->debug("$id Could not establish connection ($reason).");
                 delete $self->{connect_timeout_timer};
                 $self->set_client_unavailable($id);
                 $self->backoff;
@@ -142,17 +147,20 @@ sub setup_stomp_clients {
     }
 
     $self->reset_clients_state;
+    $log->debug("STOMP clients set up.");
 }
 
 sub connect {
     my $self = shift;
     my $id = $self->get_random_client_id;
 
+    $log->debug("$id Establishing TCP/TLS connection.");
     $self->{stomp_clients}{$id}->connect;
 
     $self->{connect_timeout_timer} = AnyEvent->timer(
         after => 1,
         cb => sub {
+            $log->debug("$id Timeout establishing STOMP connection.");
             $self->{stomp_clients}{$id}->disconnect;
             $self->set_client_unavailable($id);
             $self->backoff;
@@ -204,6 +212,8 @@ sub increase_backoff {
         my $val = $self->{config}{backoff}{start_value};
         $self->{backoff} = rand($val)+$val/2;
     }
+
+    $log->debug("Backing off ".$self->{backoff});
 }
 
 sub reset_backoff {
@@ -227,6 +237,8 @@ sub get_random_client_id {
             push @available_clients, $id;
         }
     }
+
+    $log->debug('Available clients: '.join(', ', @available_clients));
 
     my $available_clients_count = scalar @available_clients;
     return @available_clients[int(rand($available_clients_count))];
@@ -272,11 +284,17 @@ sub get_instance {
 }
 
 sub is_connected {
-    return shift->get_instance->is_connected();
+    my $self = shift;
+
+    if (defined $self->get_instance) {
+        return $self->get_instance->is_connected();
+    }
+
+    return 0;
 }
 
 sub get_uuid {
-    return shift->get_instance->get_uuid();
+    return int(time*1000000);
 }
 
 sub send {
