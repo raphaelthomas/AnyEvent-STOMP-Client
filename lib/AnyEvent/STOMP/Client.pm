@@ -223,7 +223,9 @@ sub reset_server_heartbeat_timer {
                 if (defined $self->{handle}) {
                     $self->{handle}->push_shutdown;
                     $self->{handle}->destroy;
+                    undef $self->{handle};
                 }
+
                 $self->event('CONNECTION_LOST', $self->{host}, $self->{port}, 'Missed server heartbeat');
             }
         }
@@ -398,6 +400,7 @@ sub send_frame {
 
     my $frame;
     if ($command eq 'SEND') {
+        $body = '' unless defined $body;
         $frame = $command.$EOL.$header.$EOL.$EOL.$body.$NULL;
     }
     else {
