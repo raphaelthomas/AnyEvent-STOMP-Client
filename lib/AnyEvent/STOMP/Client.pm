@@ -108,7 +108,6 @@ sub disconnect {
 
     unless ($self->is_connected) {
         if (defined $self->{handle}) {
-            $self->{handle}->push_shutdown;
             $self->{handle}->destroy;
         }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
