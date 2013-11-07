@@ -17,7 +17,7 @@ WriteMakefile(
     ABSTRACT      => 'An event-based non-blocking STOMP 1.2 client based on AnyEvent and Object::Event.',
     VERSION_FROM  => 'lib/AnyEvent/STOMP/Client.pm',
     PREREQ_PM     => {
-        'AnyEvent'      => 7.04,
+        'AnyEvent'      => 7.05,
         'Object::Event' => 1.23,
     },
     ($mm_ver <= 6.45 ? () : (META_MERGE => {
