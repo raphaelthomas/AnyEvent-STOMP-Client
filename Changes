@@ -1,5 +1,10 @@
 Revision history for Perl module AnyEvent::STOMP::Client.
 
+UNRELEASED   2013-11-07
+      - Fixes in Changes and Makefile.PL (reported by Neil Bowers).
+      - Connection handling improvements.
+      - Upgrade to AnyEvent version 7.05.
+
 0.31  2013-10-24
       - Bugfixes and safety improvements.
       - Added debug log messages.
