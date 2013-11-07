@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.31';
+our $VERSION = '0.32';
 
 
 my $EOL = chr(10);
@@ -108,7 +108,6 @@ sub disconnect {
 
     unless ($self->is_connected) {
         if (defined $self->{handle}) {
-            $self->{handle}->push_shutdown;
             $self->{handle}->destroy;
         }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);

@@ -91,6 +91,14 @@ sub connect {
     }
 }
 
+sub disconnect {
+    my $self = shift;
+
+    foreach my $id (keys %{$self->{stomp_clients}}) {
+        $self->{stomp_clients}{$id}->disconnect();
+    }
+}
+
 sub subscribe {
     my ($self, $destination, $ack_mode, $additional_headers) = @_;
 

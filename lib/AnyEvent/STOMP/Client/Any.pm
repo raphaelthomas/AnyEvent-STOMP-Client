@@ -158,7 +158,7 @@ sub connect {
     $self->{stomp_clients}{$id}->connect;
 
     $self->{connect_timeout_timer} = AnyEvent->timer(
-        after => 1,
+        after => 10,
         cb => sub {
             $log->debug("$id Timeout establishing STOMP connection.");
             $self->{stomp_clients}{$id}->disconnect;
