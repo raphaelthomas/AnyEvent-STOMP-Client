@@ -1,5 +1,9 @@
 Revision history for Perl module AnyEvent::STOMP::Client.
 
+0.33  2013-11-11
+      - Fixed backoff mechanism in AnyEvent::STOMP::Client::All.
+      - Integrated Log::Any into AnyEvent::STOMP::Client::All.
+
 0.32  2013-11-07
       - Fixes in Changes and Makefile.PL (reported by Neil Bowers).
       - Connection handling improvements.
