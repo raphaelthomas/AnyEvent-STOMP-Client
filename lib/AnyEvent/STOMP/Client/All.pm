@@ -6,6 +6,7 @@ use warnings;
 use parent 'Object::Event';
 
 use Carp;
+use Log::Any qw($log);
 use AnyEvent::STOMP::Client;
 
 
@@ -76,7 +77,6 @@ sub setup_stomp_clients {
 
         $self->{stomp_clients}{$id}->on_connect_error(
             sub {
-                $self->increase_backoff($id);
                 $self->backoff($id);
             }
         );
@@ -87,6 +87,7 @@ sub connect {
     my $self = shift;
     
     foreach my $id (keys %{$self->{stomp_clients}}) {
+        $log->debug("$id trying to connect.");
         $self->{stomp_clients}{$id}->connect();
     }
 }
@@ -95,6 +96,7 @@ sub disconnect {
     my $self = shift;
 
     foreach my $id (keys %{$self->{stomp_clients}}) {
+        $log->debug("$id disconnecting.");
         $self->{stomp_clients}{$id}->disconnect();
     }
 }
@@ -103,6 +105,7 @@ sub subscribe {
     my ($self, $destination, $ack_mode, $additional_headers) = @_;
 
     foreach my $id (keys %{$self->{stomp_clients}}) {
+        $log->debug("$id subscribing to $destination.");
         $self->{stomp_clients}{$id}->subscribe(
             $destination, $ack_mode, $additional_headers
         );
@@ -114,6 +117,11 @@ sub on_connected {
 
     foreach my $id (keys %{$self->{stomp_clients}}) {
         $self->{stomp_clients}{$id}->on_connected($callback);
+        $self->{stomp_clients}{$id}->on_connected(
+            sub {
+                $log->debug("$id connected.");
+            }
+        );
     }
 }
 
@@ -122,6 +130,11 @@ sub on_disconnected {
 
     foreach my $id (keys %{$self->{stomp_clients}}) {
         $self->{stomp_clients}{$id}->on_disconnected($callback);
+        $self->{stomp_clients}{$id}->on_disconnected(
+            sub {
+                $log->debug("$id disconnected.");
+            }
+        );
     }
 }
 
@@ -137,7 +150,14 @@ sub on_message {
                 delete $header->{'message-id'};
                 delete $header->{'receipt'};
 
-                $header->{'ack'} = $id.$SEPARATOR_ID_ACK.$header->{'ack'} if defined $header->{'ack'};
+                if (defined $header->{'ack'}) {
+                    $log->debug("$id message $header->{'ack'} received.");
+                    $header->{'ack'} = $id.$SEPARATOR_ID_ACK.$header->{'ack'} if defined $header->{'ack'};
+                }
+                else {
+                    $log->debug("$id message received.");
+                }
+
                 &$callback($self, $header, $body);
             }
         );
@@ -146,8 +166,9 @@ sub on_message {
 
 sub ack {
     my ($self, $id_ack) = @_;
-
     my ($id, $ack) = split $SEPARATOR_ID_ACK, $id_ack;
+
+    $log->debug("$id sending ack $ack.");
 
     $self->{stomp_clients}{$id}->ack($ack);
 }
@@ -156,15 +177,27 @@ sub nack {
     my ($self, $id_ack) = @_;
     my ($id, $ack) = split $SEPARATOR_ID_ACK, $id_ack;
 
+    $log->debug("$id sending nack $ack.");
+
     $self->{stomp_clients}{$id}->nack($ack);
 }
 
 sub backoff {
     my ($self, $id) = @_;
 
+    if (defined $self->{backoff}{$id}{current}) {
+        $self->increase_backoff($id);
+    }
+    else {
+        $self->{backoff}{$id}{current} = $self->{config}{backoff}{start_value};
+    }
+
+    $log->debug("$id backoff: ".$self->{backoff}{$id}{current});
+
     $self->{reconnect_timers}{$id} = AnyEvent->timer (
         after => $self->get_backoff($id),
         cb => sub {
+            $log->debug("$id trying to connect.");
             $self->{stomp_clients}{$id}->connect;
         },
     );
@@ -173,13 +206,8 @@ sub backoff {
 sub increase_backoff {
     my ($self, $id) = @_;
 
-    if (defined $self->{backoff}{$id}{current}) {
-        if ($self->{backoff}{$id}{current} < $self->{backoff}{config}{maximum}) {
-            $self->{backoff}{$id}{current} *= $self->{backoff}{config}{multiplier};
-        }
-    }
-    else {
-        $self->{backoff}{$id}{current} = $self->{backoff}{config}{start_value};
+    if ($self->{backoff}{$id}{current} < $self->{config}{backoff}{maximum}) {
+        $self->{backoff}{$id}{current} *= $self->{config}{backoff}{multiplier};
     }
 }
 
@@ -193,7 +221,7 @@ sub reset_backoff {
 sub get_backoff {
     my ($self, $id) = @_;
 
-    return $self->{config}{backoff}{$id}{current};
+    return $self->{backoff}{$id}{current};
 }
 
 1;
