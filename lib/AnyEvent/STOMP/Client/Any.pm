@@ -10,6 +10,9 @@ use Log::Any '$log';
 use Time::HiRes 'time';
 
 
+our $VERSION = '0.33';
+
+
 my $SEPARATOR_ID_ACK = '#';
 my $SEPARATOR_BROKER_ID = ':';
 
