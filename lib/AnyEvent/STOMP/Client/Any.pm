@@ -275,6 +275,12 @@ sub set_client_available {
     $self->{client_state}{$id} = 1;
 }
 
+sub get_current_id {
+    my $self = shift;
+
+    return $self->{current_stomp_client}->{host}.$SEPARATOR_BROKER_ID.$self->{current_stomp_client}->{port};
+}
+
 sub get_client_state {
     my ($self, $id) = @_;
     return $self->{client_state}{$id};
