@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.33';
+our $VERSION = '0.34';
 
 
 my $EOL = chr(10);
@@ -79,6 +79,11 @@ sub connect {
         connect => [$self->{host}, $self->{port}],
         keep_alive => 1,
         no_delay => 1,
+        on_eof => sub {
+            undef $self->{handle};
+            $self->{connected} = 0;
+            $self->event('TRANSPORT_DISCONNECTED', $self->{host}, $self->{port});
+        },
         on_connect => sub {
             $self->event('TRANSPORT_CONNECTED', $self->{host}, $self->{port});
             $self->send_frame('CONNECT', $self->{connect_headers});
@@ -588,6 +593,10 @@ sub read_frame {
 
 sub on_transport_connected {
     return shift->reg_cb('TRANSPORT_CONNECTED', shift);
+}
+
+sub on_transport_disconnected {
+    return shift->reg_cb('TRANSPORT_DISCONNECTED', shift);
 }
 
 sub on_connected {

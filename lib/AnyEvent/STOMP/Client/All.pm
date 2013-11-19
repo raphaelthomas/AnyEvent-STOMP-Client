@@ -10,7 +10,7 @@ use Log::Any qw($log);
 use AnyEvent::STOMP::Client;
 
 
-our $VERSION = '0.33';
+our $VERSION = '0.34';
 
 
 my $SEPARATOR_ID_ACK = '#';
@@ -112,6 +112,14 @@ sub subscribe {
         $self->{stomp_clients}{$id}->subscribe(
             $destination, $ack_mode, $additional_headers
         );
+    }
+}
+
+sub send {
+    my $self = shift;
+
+    foreach my $id (keys %{$self->{stomp_clients}}) {
+        $self->{stomp_clients}{$id}->send(@_);
     }
 }
 

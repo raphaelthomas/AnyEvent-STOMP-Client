@@ -10,7 +10,7 @@ use Log::Any '$log';
 use Time::HiRes 'time';
 
 
-our $VERSION = '0.33';
+our $VERSION = '0.34';
 
 
 my $SEPARATOR_ID_ACK = '#';
@@ -82,6 +82,12 @@ sub setup_stomp_clients {
             }
         );
 
+        $self->{stomp_clients}{$id}->on_transport_disconnected(
+            sub {
+                $log->debug("$id TCP/TLS connection closed.");
+            }
+        );
+
         $self->{stomp_clients}{$id}->on_disconnected(
             sub {
                 my (undef, $header) = @_;
@@ -92,11 +98,7 @@ sub setup_stomp_clients {
         $self->{stomp_clients}{$id}->on_error(
             sub {
                 my (undef, $header, undef) = @_;
-
                 $log->debug("$id STOMP ERROR received: '$header->{message}'.");
-                delete $self->{connect_timeout_timer};
-                $self->set_client_unavailable($id);
-                $self->backoff;
             }
         );
 
@@ -267,6 +269,12 @@ sub set_client_unavailable {
 sub set_client_available {
     my ($self, $id) = @_;
     $self->{client_state}{$id} = 1;
+}
+
+sub get_current_id {
+    my $self = shift;
+
+    return $self->{current_stomp_client}->{host}.$SEPARATOR_BROKER_ID.$self->{current_stomp_client}->{port};
 }
 
 sub get_client_state {
