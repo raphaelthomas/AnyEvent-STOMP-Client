@@ -1,5 +1,11 @@
 Revision history for Perl module AnyEvent::STOMP::Client.
 
+0.34  2013-11-19
+      - Fixes in connection handling.
+      - AnyEvent::STOMP::Client: Added method on_transport_disconnected.
+      - AnyEvent::STOMP::Client::Any: Added method get_current_id.
+      - AnyEvent::STOMP::Client::All: Implemented send method.
+
 0.33  2013-11-11
       - Fixed backoff mechanism in AnyEvent::STOMP::Client::All.
       - Integrated Log::Any into AnyEvent::STOMP::Client::All.
