@@ -82,6 +82,12 @@ sub setup_stomp_clients {
             }
         );
 
+        $self->{stomp_clients}{$id}->on_transport_disconnected(
+            sub {
+                $log->debug("$id TCP/TLS connection closed.");
+            }
+        );
+
         $self->{stomp_clients}{$id}->on_disconnected(
             sub {
                 my (undef, $header) = @_;
