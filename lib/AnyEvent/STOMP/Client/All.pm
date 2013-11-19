@@ -115,6 +115,14 @@ sub subscribe {
     }
 }
 
+sub send {
+    my $self = shift;
+
+    foreach my $id (keys %{$self->{stomp_clients}}) {
+        $self->{stomp_clients}{$id}->send(@_);
+    }
+}
+
 sub on_connected {
     my ($self, $callback) = @_;
 
