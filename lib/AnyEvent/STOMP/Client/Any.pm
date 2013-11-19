@@ -98,11 +98,7 @@ sub setup_stomp_clients {
         $self->{stomp_clients}{$id}->on_error(
             sub {
                 my (undef, $header, undef) = @_;
-
                 $log->debug("$id STOMP ERROR received: '$header->{message}'.");
-                delete $self->{connect_timeout_timer};
-                $self->set_client_unavailable($id);
-                $self->backoff;
             }
         );
 
