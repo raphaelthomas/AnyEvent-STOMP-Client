@@ -10,7 +10,7 @@ use Log::Any qw($log);
 use AnyEvent::STOMP::Client;
 
 
-our $VERSION = '0.34';
+our $VERSION = '0.35';
 
 
 my $SEPARATOR_ID_ACK = '#';

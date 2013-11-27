@@ -10,7 +10,7 @@ use Log::Any '$log';
 use Time::HiRes 'time';
 
 
-our $VERSION = '0.34';
+our $VERSION = '0.35';
 
 
 my $SEPARATOR_ID_ACK = '#';
@@ -208,8 +208,7 @@ sub increase_backoff {
         }
         else {
             my $max = $self->{config}{backoff}{maximum};
-            my $diff = $self->{backoff}-$max;
-            my $randomness = rand(2*$diff)-$diff;
+            my $randomness = rand($max)-$max/2;
             $self->{backoff} = $max+$randomness;
         }
     }
