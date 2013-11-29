@@ -1,5 +1,8 @@
 Revision history for Perl module AnyEvent::STOMP::Client.
 
+0.36  2013-11-29
+      - Implemented on_error in AnyEvent::STOMP::Client::Any.
+
 0.35  2013-11-27
       - Backoff bugfix in AnyEvent::STOMP::Client::Any.
 
