@@ -99,6 +99,7 @@ sub setup_stomp_clients {
             sub {
                 my (undef, $header, undef) = @_;
                 $log->debug("$id STOMP ERROR received: '$header->{message}'.");
+                $self->event('ANY_ERROR', $header->{message}, $id);
             }
         );
 
@@ -337,6 +338,10 @@ sub on_message {
 
 sub on_subscribed {
     return shift->reg_cb('ANY_SUBSCRIBED', shift);
+}
+
+sub on_error {
+    return shift->reg_cb('ANY_ERROR', shift);
 }
 
 1;
