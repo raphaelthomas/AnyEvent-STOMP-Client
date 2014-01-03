@@ -91,6 +91,9 @@ sub setup_stomp_clients {
         $self->{stomp_clients}{$id}->on_disconnected(
             sub {
                 my (undef, $header) = @_;
+
+                delete $self->{current_stomp_client};
+
                 $self->event('ANY_DISCONNECTED', $header, $id);
             }
         );
@@ -98,6 +101,9 @@ sub setup_stomp_clients {
         $self->{stomp_clients}{$id}->on_error(
             sub {
                 my (undef, $header, undef) = @_;
+
+                delete $self->{current_stomp_client};
+
                 $log->debug("$id STOMP ERROR received: '$header->{message}'.");
                 $self->event('ANY_ERROR', $header->{message}, $id);
             }
@@ -113,7 +119,10 @@ sub setup_stomp_clients {
             sub {
                 my (undef, undef, undef, $reason) = @_;
 
+                delete $self->{current_stomp_client};
+
                 $log->debug("$id Connection lost ($reason).");
+                delete $self->{connect_timeout_timer};
                 $self->set_client_unavailable($id);
                 $self->event('ANY_CONNECTION_LOST', $id);
                 $self->backoff;
@@ -291,7 +300,9 @@ sub reset_clients_state {
 }
 
 sub get_instance {
-    return shift->{current_stomp_client};
+    my $self = shift;
+
+    return $self->{current_stomp_client};
 }
 
 sub is_connected {
