@@ -63,6 +63,14 @@ sub new {
     if (defined $tls_ctx) {
         $self->{tls_hash}{tls} = 'connect';
         $self->{tls_hash}{tls_ctx} = $tls_ctx;
+
+        if ($tls_ctx->{verify}) {
+            foreach my $key (keys %$tls_ctx) {
+                if ($key =~ m/_file$/ && not -r $tls_ctx->{$key}) {
+                    die "ERROR: Cannot access $key at $tls_ctx->{$key}.\n";
+                }
+            }
+        }
     }
 
     return bless $self, $class;
