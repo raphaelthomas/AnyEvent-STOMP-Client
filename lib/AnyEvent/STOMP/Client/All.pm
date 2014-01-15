@@ -10,7 +10,7 @@ use Log::Any qw($log);
 use AnyEvent::STOMP::Client;
 
 
-our $VERSION = '0.36';
+our $VERSION = '0.38';
 
 
 my $SEPARATOR_ID_ACK = '#';
@@ -66,6 +66,13 @@ sub setup_stomp_clients {
             $config->{tls_context}
         );
 
+        $self->{stomp_clients}{$id}->on_error(
+            sub {
+                my (undef, $header, undef) = @_;
+                $log->warn("$id STOMP ERROR $header->{message}.");
+            }
+        );
+
         $self->{stomp_clients}{$id}->on_connected(
             sub {
                 $self->reset_backoff($id);
@@ -74,12 +81,16 @@ sub setup_stomp_clients {
 
         $self->{stomp_clients}{$id}->on_connection_lost(
             sub {
+                my (undef, undef, undef, $reason) = @_;
+                $log->debug("$id Connection lost ($reason).");
                 $self->backoff($id);
             }
         );
 
         $self->{stomp_clients}{$id}->on_connect_error(
             sub {
+                my (undef, undef, undef, $reason) = @_;
+                $log->debug("$id Could not establish connection ($reason).");
                 $self->backoff($id);
             }
         );
