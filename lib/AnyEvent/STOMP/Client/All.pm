@@ -160,6 +160,14 @@ sub on_disconnected {
     }
 }
 
+sub on_error {
+    my ($self, $callback) = @_;
+
+    foreach my $id (keys %{$self->{stomp_clients}}) {
+        $self->{stomp_clients}{$id}->on_error($callback);
+    }
+}
+
 sub on_message {
     my ($self, $callback) = @_;
 
