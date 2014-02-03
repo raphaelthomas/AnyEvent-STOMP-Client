@@ -79,7 +79,10 @@ sub new {
 sub connect {
     my $self = shift;
 
-    croak "You already have established a connection." if $self->is_connected;
+    if ($self->is_connected) {
+        undef $self->{handle};
+        $self->{connected} = 0;
+    }
 
     $self->{subscriptions} = {};
 
