@@ -1,5 +1,9 @@
 Revision history for Perl module AnyEvent::STOMP::Client.
 
+0.39  2014-02-12
+      - Made connect method of AnyEvent::STOMP::Client not die.
+      - Implemented on_error callback in AnyEvent::STOMP::Client::All.
+
 0.38  2014-01-15
       - Implemented check for TLS context files in AnyEvent::STOMP::Client.
       - Improved logging in AnyEvent::STOMP::Client::All.
