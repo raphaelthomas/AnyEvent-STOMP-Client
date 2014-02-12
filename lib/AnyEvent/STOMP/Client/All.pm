@@ -10,7 +10,7 @@ use Log::Any qw($log);
 use AnyEvent::STOMP::Client;
 
 
-our $VERSION = '0.38';
+our $VERSION = '0.39';
 
 
 my $SEPARATOR_ID_ACK = '#';
@@ -157,6 +157,14 @@ sub on_disconnected {
                 $log->debug("$id disconnected.");
             }
         );
+    }
+}
+
+sub on_error {
+    my ($self, $callback) = @_;
+
+    foreach my $id (keys %{$self->{stomp_clients}}) {
+        $self->{stomp_clients}{$id}->on_error($callback);
     }
 }
 

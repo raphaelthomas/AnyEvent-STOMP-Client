@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.38';
+our $VERSION = '0.39';
 
 
 my $EOL = chr(10);
@@ -79,7 +79,10 @@ sub new {
 sub connect {
     my $self = shift;
 
-    croak "You already have established a connection." if $self->is_connected;
+    if ($self->is_connected) {
+        undef $self->{handle};
+        $self->{connected} = 0;
+    }
 
     $self->{subscriptions} = {};
 
