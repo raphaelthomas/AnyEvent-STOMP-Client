@@ -551,7 +551,7 @@ sub read_frame {
 
             $self->reset_server_heartbeat_timer;
 
-            if ($command =~ /(CONNECTED|MESSAGE|RECEIPT|ERROR)/) {
+            if ($command =~ /^(CONNECTED|MESSAGE|RECEIPT|ERROR)$/) {
                 $command = $1;
             }
             else {
@@ -584,14 +584,25 @@ sub read_frame {
                             cb => sub {
                                 my ($handle, $body) = @_;
                                 $self->event('READ_FRAME', $command, $header_hashref, $body);
-                                $self->event($command, $header_hashref, $body);
-
-                                if (defined $header_hashref->{subscription}) {
+                                if ($command eq 'ERROR') {
+                                    $body =~ s/^\s+|\s+$|\0//g; # trim and remove null char
                                     $self->event(
-                                        $command.'-'.$header_hashref->{subscription},
-                                        $header_hashref,
-                                        $body
+                                        'ERROR',
+                                        $self->{host},
+                                        $self->{port},
+                                        $body || $header_hashref->{message} || 'unknown'
                                     );
+                                }
+                                else {
+                                    $self->event('MESSAGE', $header_hashref, $body);
+
+                                    if (defined $header_hashref->{subscription}) {
+                                        $self->event(
+                                            "MESSAGE-$header_hashref->{subscription}",
+                                            $header_hashref,
+                                            $body
+                                        );
+                                    }
                                 }
                             }
                         );
