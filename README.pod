@@ -261,6 +261,11 @@ frame.
 
 =back
 
+=head2 $client->destroy
+
+Disconnects and cleans up all callbacks. To be called when the client object
+is not used any more and should be cleaned up.
+
 =head2 Callbacks
 
 In order for the C<AnyEvent::STOMP::Client> to be useful, callback subroutines
