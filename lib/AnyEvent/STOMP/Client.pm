@@ -233,9 +233,6 @@ sub set_heartbeat_intervals {
 
 sub reset_client_heartbeat_timer {
     my $self = shift;
-
-    #return unless $self->{connected};
-
     my $interval = $self->{heartbeat}{interval}{client};
 
     unless (defined $interval and $interval > 0) {
