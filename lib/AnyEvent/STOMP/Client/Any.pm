@@ -100,12 +100,12 @@ sub setup_stomp_clients {
 
         $self->{stomp_clients}{$id}->on_error(
             sub {
-                my (undef, $header, undef) = @_;
+                my (undef, undef, undef, $error) = @_;
 
                 delete $self->{current_stomp_client};
 
-                $log->debug("$id STOMP ERROR received: '$header->{message}'.");
-                $self->event('ANY_ERROR', $header->{message}, $id);
+                $log->debug("$id STOMP ERROR received: '$error'.");
+                $self->event('ANY_ERROR', $error, $id);
             }
         );
 
