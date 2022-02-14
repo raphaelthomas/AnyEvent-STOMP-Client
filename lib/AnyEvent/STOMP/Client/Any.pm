@@ -104,7 +104,7 @@ sub setup_stomp_clients {
 
                 delete $self->{current_stomp_client};
 
-                $log->debug("$id STOMP ERROR received: 'error'.");
+                $log->debug("$id STOMP ERROR received: '$error'.");
                 $self->event('ANY_ERROR', $error, $id);
             }
         );
