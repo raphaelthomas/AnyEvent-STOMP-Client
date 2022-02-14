@@ -11,7 +11,7 @@ use AnyEvent::Handle;
 use List::Util 'max';
 
 
-our $VERSION = '0.40';
+our $VERSION = '0.41';
 
 
 my $EOL = chr(10);
@@ -989,6 +989,11 @@ Hash, optional, empty by default. Used to pass arbitrary headers to the STOMP
 frame.
 
 =back
+
+=head2 $client->destroy
+
+Disconnects and cleans up all callbacks. To be called when the client object
+is not used any more and should be cleaned up.
 
 =head2 Callbacks
 
