@@ -138,8 +138,10 @@ sub disconnect {
     unless ($self->is_connected) {
         if (defined $self->{handle}) {
             $self->{handle}->destroy;
+            delete $self->{handle};
         }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+        delete $self->{heartbeat}{timer};
         return;
     }
 
@@ -149,8 +151,10 @@ sub disconnect {
         if (defined $self->{handle}) {
             $self->{handle}->push_shutdown;
             $self->{handle}->destroy;
+            delete $self->{handle};
         }
         $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+        delete $self->{heartbeat}{timer};
     }
     else {
         my $receipt_id = $self->get_uuid;
@@ -168,12 +172,20 @@ sub disconnect {
                     if (defined $self->{handle}) {
                         $self->{handle}->push_shutdown;
                         $self->{handle}->destroy;
+                        delete $self->{handle};
                     }
                     $self->event('DISCONNECTED', $self->{host}, $self->{port}, $ungraceful);
+                    delete $self->{heartbeat}{timer};
                 }
             }
         );
     }
+}
+
+sub destroy {
+    my $self = shift;
+    $self->disconnect(1) if $self->is_connected;
+    $self->remove_all_callbacks;
 }
 
 sub DESTROY {
